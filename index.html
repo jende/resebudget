@@ -381,7 +381,7 @@
 
         .quick-add-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
             gap: 1rem;
             align-items: end;
         }
@@ -656,17 +656,10 @@
                     <div className="main-content">
                         <div className="tabs">
                             <button 
-                                className={`tab ${activeTab === 'trips' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('trips')}
-                            >
-                                Mina Resor
-                            </button>
-                            <button 
                                 className={`tab ${activeTab === 'expenses' ? 'active' : ''}`}
                                 onClick={() => setActiveTab('expenses')}
-                                disabled={!selectedTrip}
                             >
-                                {selectedTrip ? trips.find(t => t.id === selectedTrip)?.name : 'Utgifter'}
+                                Utgifter
                             </button>
                             {currentUser.is_admin && (
                                 <button 
@@ -678,14 +671,14 @@
                             )}
                         </div>
 
-                        {activeTab === 'trips' && (
-                            <TripsView 
+                        {activeTab === 'expenses' && (
+                            <ExpensesView
                                 trips={trips}
-                                expenses={expenses}
-                                onSelectTrip={(tripId) => {
-                                    setSelectedTrip(tripId);
-                                    setActiveTab('expenses');
-                                }}
+                                selectedTrip={selectedTrip}
+                                onSelectTrip={setSelectedTrip}
+                                expenses={expenses.filter(e => !selectedTrip || e.trip_id === selectedTrip)}
+                                users={users}
+                                currentUser={currentUser}
                                 onAddTrip={async (trip) => {
                                     const { data, error } = await supabase
                                         .from('trips')
@@ -693,22 +686,13 @@
                                         .select();
                                     if (!error && data) {
                                         setTrips([...trips, data[0]]);
+                                        setSelectedTrip(data[0].id);
                                     }
                                 }}
-                                onShowModal={() => setShowModal('addTrip')}
-                            />
-                        )}
-
-                        {activeTab === 'expenses' && selectedTrip && (
-                            <ExpensesView
-                                trip={trips.find(t => t.id === selectedTrip)}
-                                expenses={expenses.filter(e => e.trip_id === selectedTrip)}
-                                users={users}
-                                currentUser={currentUser}
                                 onAddExpense={async (expense) => {
                                     const { data, error } = await supabase
                                         .from('expenses')
-                                        .insert([{ ...expense, trip_id: selectedTrip }])
+                                        .insert([{ ...expense, trip_id: selectedTrip, added_by: currentUser.id }])
                                         .select();
                                     if (!error && data) {
                                         setExpenses([...expenses, data[0]]);
@@ -756,25 +740,18 @@
                                         setUsers(users.map(u => u.id === id ? { ...u, password: newPassword } : u));
                                     }
                                 }}
+                                onToggleAdmin={async (id, isAdmin) => {
+                                    const { error } = await supabase
+                                        .from('users')
+                                        .update({ is_admin: isAdmin })
+                                        .eq('id', id);
+                                    if (!error) {
+                                        setUsers(users.map(u => u.id === id ? { ...u, is_admin: isAdmin } : u));
+                                    }
+                                }}
                             />
                         )}
                     </div>
-
-                    {showModal === 'addTrip' && (
-                        <AddTripModal
-                            onClose={() => setShowModal(null)}
-                            onAdd={async (trip) => {
-                                const { data, error } = await supabase
-                                    .from('trips')
-                                    .insert([{ ...trip, created_by: currentUser.id }])
-                                    .select();
-                                if (!error && data) {
-                                    setTrips([...trips, data[0]]);
-                                    setShowModal(null);
-                                }
-                            }}
-                        />
-                    )}
                 </div>
             );
         }
@@ -863,65 +840,19 @@
             );
         }
 
-        function TripsView({ trips, expenses, onSelectTrip, onShowModal }) {
-            const getTripTotal = (tripId) => {
-                return expenses
-                    .filter(e => e.trip_id === tripId)
-                    .reduce((sum, e) => sum + (e.amount * e.exchange_rate), 0);
-            };
-
-            return (
-                <div>
-                    <div className="card-header" style={{marginBottom: '2rem'}}>
-                        <h2 className="card-title">Dina Resor</h2>
-                        <button className="btn btn-primary" onClick={onShowModal}>
-                            + Ny Resa
-                        </button>
-                    </div>
-
-                    {trips.length === 0 ? (
-                        <div className="card" style={{textAlign: 'center', padding: '3rem'}}>
-                            <p style={{color: 'var(--text-muted)', marginBottom: '1rem'}}>
-                                Inga resor ännu. Skapa din första resa!
-                            </p>
-                            <button className="btn btn-primary" onClick={onShowModal}>
-                                + Skapa Resa
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="grid">
-                            {trips.map(trip => (
-                                <div 
-                                    key={trip.id} 
-                                    className="card trip-card"
-                                    onClick={() => onSelectTrip(trip.id)}
-                                >
-                                    <h3 className="trip-name">{trip.name}</h3>
-                                    <p style={{color: 'var(--text-muted)', marginBottom: '1rem'}}>
-                                        {expenses.filter(e => e.trip_id === trip.id).length} utgifter
-                                    </p>
-                                    <div className="trip-total">
-                                        {getTripTotal(trip.id).toFixed(0)} kr
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        function ExpensesView({ trip, expenses, users, currentUser, onAddExpense, onDeleteExpense }) {
+        function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, users, currentUser, onAddTrip, onAddExpense, onDeleteExpense }) {
             const [description, setDescription] = useState('');
             const [amount, setAmount] = useState('');
             const [currency, setCurrency] = useState('SEK');
             const [category, setCategory] = useState('food');
-            const [paidBy, setPaidBy] = useState(currentUser.id);
+            const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
             const [submitting, setSubmitting] = useState(false);
+            const [showNewTrip, setShowNewTrip] = useState(false);
+            const [newTripName, setNewTripName] = useState('');
 
             const handleQuickAdd = async (e) => {
                 e.preventDefault();
-                if (!description || !amount || submitting) return;
+                if (!description || !amount || submitting || !selectedTrip) return;
 
                 setSubmitting(true);
                 const selectedCurrency = CURRENCIES.find(c => c.code === currency);
@@ -931,19 +862,28 @@
                     currency,
                     exchange_rate: selectedCurrency.rate,
                     category,
-                    paid_by: paidBy,
-                    date: new Date().toISOString()
+                    date: new Date(expenseDate).toISOString()
                 });
 
                 setDescription('');
                 setAmount('');
                 setCategory('food');
+                setExpenseDate(new Date().toISOString().split('T')[0]);
                 setSubmitting(false);
+            };
+
+            const handleAddTrip = async (e) => {
+                e.preventDefault();
+                if (!newTripName) return;
+                await onAddTrip({ name: newTripName, created_at: new Date().toISOString() });
+                setNewTripName('');
+                setShowNewTrip(false);
             };
 
             const getCategoryInfo = (catId) => CATEGORIES.find(c => c.id === catId);
             const getUserName = (userId) => users.find(u => u.id === userId)?.name || 'Okänd';
 
+            const currentTrip = trips.find(t => t.id === selectedTrip);
             const totalSEK = expenses.reduce((sum, e) => sum + (e.amount * e.exchange_rate), 0);
             
             const categoryTotals = CATEGORIES.map(cat => ({
@@ -953,169 +893,211 @@
                     .reduce((sum, e) => sum + (e.amount * e.exchange_rate), 0)
             })).filter(c => c.total > 0);
 
-            const userTotals = users.map(user => ({
-                ...user,
-                paid: expenses
-                    .filter(e => e.paid_by === user.id)
-                    .reduce((sum, e) => sum + (e.amount * e.exchange_rate), 0)
-            }));
-
-            const perPerson = totalSEK / users.length;
-            const balances = userTotals.map(u => ({
-                ...u,
-                balance: u.paid - perPerson
-            }));
+            const perPerson = users.length > 0 ? totalSEK / users.length : 0;
 
             return (
                 <div>
-                    {/* Snabbinmatning */}
-                    <form onSubmit={handleQuickAdd} className="quick-add-form">
-                        <h3 style={{marginBottom: '1rem', fontSize: '1.25rem'}}>⚡ Lägg till utgift</h3>
-                        <div className="quick-add-grid">
-                            <div className="form-group" style={{marginBottom: 0}}>
+                    {/* Resor dropdown och skapa ny resa */}
+                    <div className="card" style={{marginBottom: '2rem'}}>
+                        <div style={{display: 'flex', gap: '1rem', alignItems: 'end'}}>
+                            <div className="form-group" style={{flex: 1, marginBottom: 0}}>
+                                <label className="form-label">Välj resa</label>
+                                <select
+                                    className="form-select"
+                                    value={selectedTrip || ''}
+                                    onChange={(e) => onSelectTrip(e.target.value ? parseInt(e.target.value) : null)}
+                                >
+                                    <option value="">-- Välj en resa --</option>
+                                    {trips.map(trip => (
+                                        <option key={trip.id} value={trip.id}>
+                                            {trip.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button 
+                                className="btn btn-primary"
+                                onClick={() => setShowNewTrip(!showNewTrip)}
+                            >
+                                + Ny resa
+                            </button>
+                        </div>
+
+                        {showNewTrip && (
+                            <form onSubmit={handleAddTrip} style={{marginTop: '1rem', display: 'flex', gap: '1rem'}}>
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="Vad köpte du?"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Resans namn (t.ex. Thailand 2026)"
+                                    value={newTripName}
+                                    onChange={(e) => setNewTripName(e.target.value)}
                                     required
-                                    disabled={submitting}
+                                    style={{flex: 1}}
                                 />
-                            </div>
-                            <div className="form-group" style={{marginBottom: 0}}>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    className="form-input"
-                                    placeholder="Belopp"
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    required
-                                    disabled={submitting}
-                                />
-                            </div>
-                            <div className="form-group" style={{marginBottom: 0}}>
-                                <select
-                                    className="form-select"
-                                    value={currency}
-                                    onChange={(e) => setCurrency(e.target.value)}
-                                    disabled={submitting}
+                                <button type="submit" className="btn btn-primary">Skapa</button>
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        setShowNewTrip(false);
+                                        setNewTripName('');
+                                    }}
                                 >
-                                    {CURRENCIES.map(c => (
-                                        <option key={c.code} value={c.code}>{c.code}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="form-group" style={{marginBottom: 0}}>
-                                <select
-                                    className="form-select"
-                                    value={category}
-                                    onChange={(e) => setCategory(e.target.value)}
-                                    disabled={submitting}
-                                >
-                                    {CATEGORIES.map(c => (
-                                        <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <button type="submit" className="btn btn-secondary" disabled={submitting}>
-                                {submitting ? '...' : 'Lägg till'}
-                            </button>
-                        </div>
-                    </form>
-
-                    {/* Statistik */}
-                    <div className="grid" style={{marginBottom: '2rem'}}>
-                        <div className="card stat-card">
-                            <div className="stat-value">{totalSEK.toFixed(0)} kr</div>
-                            <div className="stat-label">Total</div>
-                        </div>
-                        <div className="card stat-card">
-                            <div className="stat-value">{perPerson.toFixed(0)} kr</div>
-                            <div className="stat-label">Per Person</div>
-                        </div>
-                        <div className="card stat-card">
-                            <div className="stat-value">{expenses.length}</div>
-                            <div className="stat-label">Utgifter</div>
-                        </div>
-                    </div>
-
-                    {/* Kategorier */}
-                    {categoryTotals.length > 0 && (
-                        <div className="card" style={{marginBottom: '2rem'}}>
-                            <h3 className="card-title" style={{marginBottom: '1rem'}}>Per Kategori</h3>
-                            <div className="expense-list">
-                                {categoryTotals.map(cat => (
-                                    <div key={cat.id} style={{display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'var(--bg)', borderRadius: '6px'}}>
-                                        <span>{cat.icon} {cat.name}</span>
-                                        <span style={{fontFamily: 'Space Mono', fontWeight: 700}}>{cat.total.toFixed(0)} kr</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Avräkning */}
-                    <div className="card" style={{marginBottom: '2rem'}}>
-                        <h3 className="card-title" style={{marginBottom: '1rem'}}>Avräkning</h3>
-                        <div className="expense-list">
-                            {balances.map(b => (
-                                <div key={b.id} className="balance-card" style={{marginBottom: '0.75rem'}}>
-                                    <div className="balance-title">{b.name}</div>
-                                    <div className="balance-amount">
-                                        {b.balance > 0 
-                                            ? `Får tillbaka ${b.balance.toFixed(0)} kr` 
-                                            : b.balance < 0 
-                                            ? `Skyldig ${Math.abs(b.balance).toFixed(0)} kr`
-                                            : 'Kvitt'}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Utgifter */}
-                    <div className="card">
-                        <h3 className="card-title" style={{marginBottom: '1rem'}}>Alla Utgifter</h3>
-                        {expenses.length === 0 ? (
-                            <p style={{textAlign: 'center', color: 'var(--text-muted)', padding: '2rem'}}>
-                                Inga utgifter ännu
-                            </p>
-                        ) : (
-                            <div className="expense-list">
-                                {expenses.map(expense => {
-                                    const catInfo = getCategoryInfo(expense.category);
-                                    return (
-                                        <div key={expense.id} className="expense-item">
-                                            <div className="expense-category">
-                                                {catInfo.icon}
-                                            </div>
-                                            <div className="expense-details">
-                                                <div className="expense-description">{expense.description}</div>
-                                                <div className="expense-meta">
-                                                    {catInfo.name} • {getUserName(expense.paid_by)} • {new Date(expense.date).toLocaleDateString('sv-SE')}
-                                                </div>
-                                            </div>
-                                            <div className="expense-amount">
-                                                <div className="expense-price">
-                                                    {(expense.amount * expense.exchange_rate).toFixed(0)} kr
-                                                </div>
-                                                <div className="expense-currency">
-                                                    ({expense.amount.toFixed(0)} {expense.currency})
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                    Avbryt
+                                </button>
+                            </form>
                         )}
                     </div>
+
+                    {!selectedTrip ? (
+                        <div className="card" style={{textAlign: 'center', padding: '3rem'}}>
+                            <p style={{color: 'var(--text-muted)'}}>
+                                Välj en resa eller skapa en ny för att börja lägga till utgifter
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Snabbinmatning */}
+                            <form onSubmit={handleQuickAdd} className="quick-add-form">
+                                <h3 style={{marginBottom: '1rem', fontSize: '1.25rem'}}>⚡ Lägg till utgift</h3>
+                                <div className="quick-add-grid">
+                                    <div className="form-group" style={{marginBottom: 0}}>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="Vad köpte du?"
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            required
+                                            disabled={submitting}
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{marginBottom: 0}}>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            className="form-input"
+                                            placeholder="Belopp"
+                                            value={amount}
+                                            onChange={(e) => setAmount(e.target.value)}
+                                            required
+                                            disabled={submitting}
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{marginBottom: 0}}>
+                                        <select
+                                            className="form-select"
+                                            value={currency}
+                                            onChange={(e) => setCurrency(e.target.value)}
+                                            disabled={submitting}
+                                        >
+                                            {CURRENCIES.map(c => (
+                                                <option key={c.code} value={c.code}>{c.code}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group" style={{marginBottom: 0}}>
+                                        <select
+                                            className="form-select"
+                                            value={category}
+                                            onChange={(e) => setCategory(e.target.value)}
+                                            disabled={submitting}
+                                        >
+                                            {CATEGORIES.map(c => (
+                                                <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group" style={{marginBottom: 0}}>
+                                        <input
+                                            type="date"
+                                            className="form-input"
+                                            value={expenseDate}
+                                            onChange={(e) => setExpenseDate(e.target.value)}
+                                            disabled={submitting}
+                                            required
+                                        />
+                                    </div>
+                                    <button type="submit" className="btn btn-secondary" disabled={submitting}>
+                                        {submitting ? '...' : 'Lägg till'}
+                                    </button>
+                                </div>
+                            </form>
+
+                            {/* Statistik */}
+                            <div className="grid" style={{marginBottom: '2rem'}}>
+                                <div className="card stat-card">
+                                    <div className="stat-value">{totalSEK.toFixed(0)} kr</div>
+                                    <div className="stat-label">Total</div>
+                                </div>
+                                <div className="card stat-card">
+                                    <div className="stat-value">{perPerson.toFixed(0)} kr</div>
+                                    <div className="stat-label">Per Person</div>
+                                </div>
+                                <div className="card stat-card">
+                                    <div className="stat-value">{expenses.length}</div>
+                                    <div className="stat-label">Utgifter</div>
+                                </div>
+                            </div>
+
+                            {/* Kategorier */}
+                            {categoryTotals.length > 0 && (
+                                <div className="card" style={{marginBottom: '2rem'}}>
+                                    <h3 className="card-title" style={{marginBottom: '1rem'}}>Per Kategori</h3>
+                                    <div className="expense-list">
+                                        {categoryTotals.map(cat => (
+                                            <div key={cat.id} style={{display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'var(--bg)', borderRadius: '6px'}}>
+                                                <span>{cat.icon} {cat.name}</span>
+                                                <span style={{fontFamily: 'Space Mono', fontWeight: 700}}>{cat.total.toFixed(0)} kr</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Utgifter */}
+                            <div className="card">
+                                <h3 className="card-title" style={{marginBottom: '1rem'}}>Alla Utgifter</h3>
+                                {expenses.length === 0 ? (
+                                    <p style={{textAlign: 'center', color: 'var(--text-muted)', padding: '2rem'}}>
+                                        Inga utgifter ännu
+                                    </p>
+                                ) : (
+                                    <div className="expense-list">
+                                        {expenses.map(expense => {
+                                            const catInfo = getCategoryInfo(expense.category);
+                                            return (
+                                                <div key={expense.id} className="expense-item">
+                                                    <div className="expense-category">
+                                                        {catInfo.icon}
+                                                    </div>
+                                                    <div className="expense-details">
+                                                        <div className="expense-description">{expense.description}</div>
+                                                        <div className="expense-meta">
+                                                            {catInfo.name} • {getUserName(expense.added_by)} • {new Date(expense.date).toLocaleDateString('sv-SE')}
+                                                        </div>
+                                                    </div>
+                                                    <div className="expense-amount">
+                                                        <div className="expense-price">
+                                                            {(expense.amount * expense.exchange_rate).toFixed(0)} kr
+                                                        </div>
+                                                        <div className="expense-currency">
+                                                            ({expense.amount.toFixed(0)} {expense.currency})
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             );
         }
 
-        function AdminView({ users, onAddUser, onDeleteUser, onResetPassword }) {
+        function AdminView({ users, onAddUser, onDeleteUser, onResetPassword, onToggleAdmin }) {
             const [showAddUser, setShowAddUser] = useState(false);
             const [newUser, setNewUser] = useState({ username: '', password: '', name: '', is_admin: false });
             const [submitting, setSubmitting] = useState(false);
@@ -1205,7 +1187,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div style={{display: 'flex', gap: '0.5rem'}}>
+                                    <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
                                         <button 
                                             className="btn btn-secondary btn-small"
                                             onClick={() => {
@@ -1215,63 +1197,30 @@
                                         >
                                             Återställ lösenord
                                         </button>
-                                        {!user.is_admin && (
-                                            <button 
-                                                className="btn btn-danger btn-small"
-                                                onClick={() => {
-                                                    if (confirm('Ta bort ' + user.name + '?')) {
-                                                        onDeleteUser(user.id);
-                                                    }
-                                                }}
-                                            >
-                                                Ta bort
-                                            </button>
-                                        )}
+                                        <button 
+                                            className={`btn btn-small ${user.is_admin ? 'btn-secondary' : 'btn-primary'}`}
+                                            onClick={() => {
+                                                if (confirm(`${user.is_admin ? 'Ta bort' : 'Ge'} admin-rättigheter för ${user.name}?`)) {
+                                                    onToggleAdmin(user.id, !user.is_admin);
+                                                }
+                                            }}
+                                        >
+                                            {user.is_admin ? '⬇️ Ta bort admin' : '⬆️ Gör till admin'}
+                                        </button>
+                                        <button 
+                                            className="btn btn-danger btn-small"
+                                            onClick={() => {
+                                                if (confirm('Ta bort ' + user.name + '?')) {
+                                                    onDeleteUser(user.id);
+                                                }
+                                            }}
+                                        >
+                                            Ta bort
+                                        </button>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    </div>
-                </div>
-            );
-        }
-
-        function AddTripModal({ onClose, onAdd }) {
-            const [name, setName] = useState('');
-            const [submitting, setSubmitting] = useState(false);
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                setSubmitting(true);
-                await onAdd({ name, created_at: new Date().toISOString() });
-                setSubmitting(false);
-            };
-
-            return (
-                <div className="modal-overlay" onClick={onClose}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2 className="modal-title">Ny Resa</h2>
-                            <button className="close-btn" onClick={onClose}>×</button>
-                        </div>
-                        <form onSubmit={handleSubmit}>
-                            <div className="form-group">
-                                <label className="form-label">Resans namn</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="t.ex. Thailand 2026"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    required
-                                    autoFocus
-                                    disabled={submitting}
-                                />
-                            </div>
-                            <button type="submit" className="btn btn-primary" style={{width: '100%'}} disabled={submitting}>
-                                {submitting ? 'Skapar...' : 'Skapa resa'}
-                            </button>
-                        </form>
                     </div>
                 </div>
             );
