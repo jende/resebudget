@@ -10,11 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
             --primary: #2C5F2D;
@@ -30,1203 +26,701 @@
             --error: #EF5350;
         }
 
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-        }
-
-        .app-container {
-            min-height: 100vh;
-            padding: 2rem;
-        }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .app-container { min-height: 100vh; padding: 2rem; }
 
         .header {
-            max-width: 1400px;
-            margin: 0 auto 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 1.5rem;
-            border-bottom: 2px solid var(--primary);
-        }
-
-        .logo {
-            font-family: 'Space Mono', monospace;
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .user-badge {
-            background: var(--primary);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .admin-badge {
-            background: var(--accent);
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background: var(--primary-light);
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: white;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-danger {
-            background: var(--error);
-            color: white;
-        }
-
-        .btn-small {
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-        }
-
-        .main-content {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .login-container {
-            max-width: 400px;
-            margin: 5rem auto;
-            background: var(--card);
-            padding: 3rem;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
-
-        .login-title {
-            font-family: 'Space Mono', monospace;
-            font-size: 2rem;
-            margin-bottom: 2rem;
-            text-align: center;
-            color: var(--primary);
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--text);
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 0.875rem;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 1rem;
-            transition: border-color 0.2s;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .form-select {
-            width: 100%;
-            padding: 0.875rem;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 1rem;
-            background: white;
-            cursor: pointer;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            border-bottom: 2px solid var(--border);
-        }
-
-        .tab {
-            padding: 1rem 2rem;
-            background: none;
-            border: none;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 1rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s;
-            margin-bottom: -2px;
-        }
-
-        .tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-
-        .tab:hover {
-            color: var(--primary);
-        }
-
-        .tab:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .card {
-            background: var(--card);
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            border: 1px solid var(--border);
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .stat-card {
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .stat-value {
-            font-family: 'Space Mono', monospace;
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .trip-card {
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .trip-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--primary-light);
-        }
-
-        .trip-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-        }
-
-        .trip-name {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .trip-total {
-            font-family: 'Space Mono', monospace;
-            font-size: 1.75rem;
-            color: var(--accent);
-            font-weight: 700;
-        }
-
-        .expense-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .expense-item {
-            background: var(--card);
-            padding: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            display: grid;
-            grid-template-columns: auto 1fr auto;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        .expense-category {
-            width: 50px;
-            height: 50px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            background: var(--bg);
-        }
-
-        .expense-details {
-            flex: 1;
-        }
-
-        .expense-description {
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-        }
-
-        .expense-meta {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-
-        .expense-amount {
-            text-align: right;
-        }
-
-        .expense-price {
-            font-family: 'Space Mono', monospace;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--text);
-        }
-
-        .expense-currency {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .quick-add-form {
-            background: var(--primary);
-            padding: 1.5rem;
-            border-radius: 12px;
-            color: white;
-            margin-bottom: 2rem;
-        }
-
-        .quick-add-form .form-input,
-        .quick-add-form .form-select {
-            background: rgba(255,255,255,0.95);
-        }
-
-        .quick-add-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
-            gap: 1rem;
-            align-items: end;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 2rem;
-        }
-
-        .modal {
-            background: var(--card);
-            padding: 2rem;
-            border-radius: 16px;
-            max-width: 600px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .modal-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: var(--text-muted);
-            padding: 0;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: all 0.2s;
-        }
-
-        .close-btn:hover {
-            background: var(--border);
-            color: var(--text);
-        }
-
-        .balance-card {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-            color: white;
-            padding: 2rem;
-            border-radius: 12px;
-        }
-
-        .balance-title {
-            font-size: 1rem;
-            opacity: 0.9;
-            margin-bottom: 0.5rem;
-        }
-
-        .balance-amount {
-            font-family: 'Space Mono', monospace;
-            font-size: 2rem;
-            font-weight: 700;
-        }
-
-        .user-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .user-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            background: var(--bg);
-            border-radius: 8px;
-        }
-
-        .user-item-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-
-        .alert-success {
-            background: #E8F5E9;
-            color: #2E7D32;
-            border: 1px solid #4CAF50;
-        }
-
-        .alert-error {
-            background: #FFEBEE;
-            color: #C62828;
-            border: 1px solid #EF5350;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-muted);
-        }
-
-        .spinner {
-            border: 3px solid var(--border);
-            border-top: 3px solid var(--primary);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+            max-width: 1400px; margin: 0 auto 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 1.5rem; border-bottom: 2px solid var(--primary);
+        }
+        .logo { font-family: 'Space Mono', monospace; font-size: 1.8rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 0.5rem; }
+        .user-info { display: flex; align-items: center; gap: 1rem; }
+        .user-badge { background: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 500; }
+        .admin-badge { background: var(--accent); }
+
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-light); transform: translateY(-2px); }
+        .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-secondary:hover:not(:disabled) { background: var(--primary); color: white; }
+        .btn-danger { background: var(--error); color: white; }
+        .btn-danger:hover:not(:disabled) { background: #c62828; }
+        .btn-small { padding: 0.5rem 1rem; font-size: 0.875rem; }
+        .btn-icon { padding: 0.35rem 0.6rem; font-size: 0.9rem; border-radius: 6px; line-height: 1; }
+
+        .main-content { max-width: 1400px; margin: 0 auto; }
+
+        .login-container { max-width: 400px; margin: 5rem auto; background: var(--card); padding: 3rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .login-title { font-family: 'Space Mono', monospace; font-size: 2rem; margin-bottom: 2rem; text-align: center; color: var(--primary); }
+
+        .form-group { margin-bottom: 1.5rem; }
+        .form-label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text); }
+        .form-input { width: 100%; padding: 0.875rem; border: 2px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 1rem; transition: border-color 0.2s; }
+        .form-input:focus { outline: none; border-color: var(--primary); }
+        .form-select { width: 100%; padding: 0.875rem; border: 2px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 1rem; background: white; cursor: pointer; }
+
+        .tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid var(--border); }
+        .tab { padding: 1rem 2rem; background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; margin-bottom: -2px; }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab:hover { color: var(--primary); }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .card { background: var(--card); padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 1px solid var(--border); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .card-title { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+        .stat-card { text-align: center; padding: 2rem; }
+        .stat-value { font-family: 'Space Mono', monospace; font-size: 2.5rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem; }
+        .stat-label { color: var(--text-muted); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* TRIP LIST */
+        .trip-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.8rem; border-radius: 8px; border: 1px solid transparent; transition: all 0.15s; cursor: pointer; }
+        .trip-row:hover { background: var(--bg); border-color: var(--border); }
+        .trip-row.selected { background: #f0f7f0; border-color: var(--primary-light); }
+        .trip-row-name { flex: 1; font-weight: 500; font-size: 1rem; }
+        .trip-row-count { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+
+        /* EXPENSE LIST */
+        .expense-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .expense-item { background: var(--card); padding: 1rem; border-radius: 8px; border: 1px solid var(--border); display: grid; grid-template-columns: auto 1fr auto auto; gap: 1rem; align-items: center; transition: background 0.15s; }
+        .expense-item:hover { background: #fafafa; }
+        .expense-category { width: 46px; height: 46px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: var(--bg); flex-shrink: 0; }
+        .expense-details { min-width: 0; }
+        .expense-description { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .expense-meta { font-size: 0.875rem; color: var(--text-muted); }
+        .expense-amount { text-align: right; white-space: nowrap; }
+        .expense-price { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-weight: 700; }
+        .expense-currency { font-size: 0.75rem; color: var(--text-muted); }
+
+        .quick-add-form { background: var(--primary); padding: 1.5rem; border-radius: 12px; color: white; margin-bottom: 2rem; }
+        .quick-add-form .form-input, .quick-add-form .form-select { background: rgba(255,255,255,0.95); }
+        .quick-add-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end; }
+
+        /* CATEGORY MANAGER */
+        .cat-section { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; }
+        .cat-section-title { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
+        .cat-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .cat-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.65rem; border-radius: 20px; font-size: 0.85rem; background: white; border: 1px solid var(--border); }
+        .cat-chip-del { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 0 0 0.1rem; transition: color 0.15s; }
+        .cat-chip-del:hover { color: var(--error); }
+        .cat-add-row { display: flex; gap: 0.5rem; align-items: center; }
+        .cat-add-row input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; font-family: 'DM Sans', sans-serif; }
+        .cat-add-row input:focus { outline: none; border-color: var(--primary); }
+        .emoji-picker { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.6rem; }
+        .emoji-btn { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 0.2rem 0.4rem; font-size: 1.1rem; cursor: pointer; transition: all 0.15s; }
+        .emoji-btn:hover { border-color: var(--primary); }
+        .emoji-btn.active { background: var(--primary); border-color: var(--primary); }
+
+        /* CONFIRM MODAL */
+        .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 1rem; }
+        .confirm-box { background: white; border-radius: 12px; padding: 2rem; max-width: 360px; width: 100%; box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+        .confirm-box h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+        .confirm-box p { color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.5; }
+        .confirm-btns { display: flex; gap: 0.75rem; }
+        .confirm-btns .btn { flex: 1; justify-content: center; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 2rem; }
+        .modal { background: var(--card); padding: 2rem; border-radius: 16px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .modal-title { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s; }
+        .close-btn:hover { background: var(--border); color: var(--text); }
+
+        .user-list { display: flex; flex-direction: column; gap: 1rem; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg); border-radius: 8px; }
+        .user-item-info { display: flex; align-items: center; gap: 1rem; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .alert-success { background: #E8F5E9; color: #2E7D32; border: 1px solid #4CAF50; }
+        .alert-error { background: #FFEBEE; color: #C62828; border: 1px solid #EF5350; }
+        .loading { text-align: center; padding: 3rem; color: var(--text-muted); }
+        .spinner { border: 3px solid var(--border); border-top: 3px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         @media (max-width: 768px) {
-            .quick-add-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .header {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
+            .quick-add-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 1rem; text-align: center; }
+            .expense-item { grid-template-columns: auto 1fr auto; }
         }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-        
-        // Supabase konfiguration
-        const SUPABASE_URL = 'https://sxgrwpqdocluntpuotib.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Z3J3cHFkb2NsdW50cHVvdGliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTA5NDksImV4cCI6MjA4NjY2Njk0OX0.r9GqncCA9iH8iqhzV4YB8b-WYMd-mf2z_e8aZ8e951k';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL = 'https://sxgrwpqdocluntpuotib.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Z3J3cHFkb2NsdW50cHVvdGliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTA5NDksImV4cCI6MjA4NjY2Njk0OX0.r9GqncCA9iH8iqhzV4YB8b-WYMd-mf2z_e8aZ8e951k';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Kategorier
-        const CATEGORIES = [
-            { id: 'food', name: 'Mat & Restaurang', icon: '🍽️' },
-            { id: 'transport', name: 'Transport', icon: '🚗' },
-            { id: 'accommodation', name: 'Boende', icon: '🏨' },
-            { id: 'activities', name: 'Aktiviteter', icon: '🎭' },
-            { id: 'shopping', name: 'Shopping', icon: '🛍️' },
-            { id: 'other', name: 'Övrigt', icon: '📌' }
-        ];
+const DEFAULT_CATEGORIES = [
+    { id: 'food', name: 'Mat & Restaurang', icon: '🍽️' },
+    { id: 'transport', name: 'Transport', icon: '🚗' },
+    { id: 'accommodation', name: 'Boende', icon: '🏨' },
+    { id: 'activities', name: 'Aktiviteter', icon: '🎭' },
+    { id: 'shopping', name: 'Shopping', icon: '🛍️' },
+    { id: 'other', name: 'Övrigt', icon: '📌' }
+];
 
-        // Valutor
-        const CURRENCIES = [
-            { code: 'SEK', symbol: 'kr', rate: 1 },
-            { code: 'EUR', symbol: '€', rate: 11.5 },
-            { code: 'USD', symbol: '$', rate: 10.8 },
-            { code: 'GBP', symbol: '£', rate: 13.5 },
-            { code: 'NOK', symbol: 'kr', rate: 1.0 },
-            { code: 'DKK', symbol: 'kr', rate: 1.54 },
-            { code: 'THB', symbol: '฿', rate: 0.31 },
-            { code: 'JPY', symbol: '¥', rate: 0.073 }
-        ];
+const EMOJI_OPTIONS = ['🍽️','🚗','🏨','🎭','🛍️','📌','☕','🍺','🎵','⚽','🏖️','🎡','💊','📸','🚢','✈️','🚂','🏔️','🎰','🎾','🛺','🤿','🎪','🛒'];
 
-        function App() {
-            const [currentUser, setCurrentUser] = useState(null);
-            const [users, setUsers] = useState([]);
-            const [trips, setTrips] = useState([]);
-            const [expenses, setExpenses] = useState([]);
-            const [activeTab, setActiveTab] = useState('trips');
-            const [selectedTrip, setSelectedTrip] = useState(null);
-            const [showModal, setShowModal] = useState(null);
-            const [loading, setLoading] = useState(true);
-            const [error, setError] = useState(null);
+const CURRENCIES = [
+    { code: 'SEK', symbol: 'kr', rate: 1 },
+    { code: 'EUR', symbol: '€', rate: 11.5 },
+    { code: 'USD', symbol: '$', rate: 10.8 },
+    { code: 'GBP', symbol: '£', rate: 13.5 },
+    { code: 'NOK', symbol: 'kr', rate: 1.0 },
+    { code: 'DKK', symbol: 'kr', rate: 1.54 },
+    { code: 'THB', symbol: '฿', rate: 0.31 },
+    { code: 'JPY', symbol: '¥', rate: 0.073 }
+];
 
-            // Ladda data när användaren loggar in
-            useEffect(() => {
-                if (currentUser) {
-                    loadData();
-                }
-            }, [currentUser]);
-
-            const loadData = async () => {
-                try {
-                    setLoading(true);
-                    
-                    // Ladda användare
-                    const { data: usersData, error: usersError } = await supabase
-                        .from('users')
-                        .select('*');
-                    if (usersError) throw usersError;
-                    setUsers(usersData || []);
-
-                    // Ladda resor
-                    const { data: tripsData, error: tripsError } = await supabase
-                        .from('trips')
-                        .select('*')
-                        .order('created_at', { ascending: false });
-                    if (tripsError) throw tripsError;
-                    setTrips(tripsData || []);
-
-                    // Ladda utgifter
-                    const { data: expensesData, error: expensesError } = await supabase
-                        .from('expenses')
-                        .select('*')
-                        .order('date', { ascending: false });
-                    if (expensesError) throw expensesError;
-                    setExpenses(expensesData || []);
-
-                    setLoading(false);
-                } catch (err) {
-                    console.error('Error loading data:', err);
-                    setError('Kunde inte ladda data: ' + err.message);
-                    setLoading(false);
-                }
-            };
-
-            if (!currentUser) {
-                return <LoginForm onLogin={setCurrentUser} supabase={supabase} />;
-            }
-
-            if (loading) {
-                return (
-                    <div className="loading">
-                        <div className="spinner"></div>
-                        <p>Laddar data...</p>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="app-container">
-                    <Header user={currentUser} onLogout={() => setCurrentUser(null)} />
-                    
-                    {error && <div className="alert alert-error">{error}</div>}
-                    
-                    <div className="main-content">
-                        <div className="tabs">
-                            <button 
-                                className={`tab ${activeTab === 'expenses' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('expenses')}
-                            >
-                                Utgifter
-                            </button>
-                            {currentUser.is_admin && (
-                                <button 
-                                    className={`tab ${activeTab === 'admin' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('admin')}
-                                >
-                                    Admin
-                                </button>
-                            )}
-                        </div>
-
-                        {activeTab === 'expenses' && (
-                            <ExpensesView
-                                trips={trips}
-                                selectedTrip={selectedTrip}
-                                onSelectTrip={setSelectedTrip}
-                                expenses={expenses.filter(e => !selectedTrip || e.trip_id === selectedTrip)}
-                                users={users}
-                                currentUser={currentUser}
-                                onAddTrip={async (trip) => {
-                                    const { data, error } = await supabase
-                                        .from('trips')
-                                        .insert([{ ...trip, created_by: currentUser.id }])
-                                        .select();
-                                    if (!error && data) {
-                                        setTrips([...trips, data[0]]);
-                                        setSelectedTrip(data[0].id);
-                                    }
-                                }}
-                                onAddExpense={async (expense) => {
-                                    const { data, error } = await supabase
-                                        .from('expenses')
-                                        .insert([{ ...expense, trip_id: selectedTrip, added_by: currentUser.id }])
-                                        .select();
-                                    if (!error && data) {
-                                        setExpenses([...expenses, data[0]]);
-                                    }
-                                }}
-                                onDeleteExpense={async (id) => {
-                                    const { error } = await supabase
-                                        .from('expenses')
-                                        .delete()
-                                        .eq('id', id);
-                                    if (!error) {
-                                        setExpenses(expenses.filter(e => e.id !== id));
-                                    }
-                                }}
-                            />
-                        )}
-
-                        {activeTab === 'admin' && currentUser.is_admin && (
-                            <AdminView
-                                users={users}
-                                onAddUser={async (user) => {
-                                    const { data, error } = await supabase
-                                        .from('users')
-                                        .insert([user])
-                                        .select();
-                                    if (!error && data) {
-                                        setUsers([...users, data[0]]);
-                                    }
-                                }}
-                                onDeleteUser={async (id) => {
-                                    const { error } = await supabase
-                                        .from('users')
-                                        .delete()
-                                        .eq('id', id);
-                                    if (!error) {
-                                        setUsers(users.filter(u => u.id !== id));
-                                    }
-                                }}
-                                onResetPassword={async (id, newPassword) => {
-                                    const { error } = await supabase
-                                        .from('users')
-                                        .update({ password: newPassword })
-                                        .eq('id', id);
-                                    if (!error) {
-                                        setUsers(users.map(u => u.id === id ? { ...u, password: newPassword } : u));
-                                    }
-                                }}
-                                onToggleAdmin={async (id, isAdmin) => {
-                                    const { error } = await supabase
-                                        .from('users')
-                                        .update({ is_admin: isAdmin })
-                                        .eq('id', id);
-                                    if (!error) {
-                                        setUsers(users.map(u => u.id === id ? { ...u, is_admin: isAdmin } : u));
-                                    }
-                                }}
-                            />
-                        )}
-                    </div>
+// ── BEKRÄFTELSEDIALOG ────────────────────────────────────
+function ConfirmDialog({ title, message, confirmLabel = 'Ta bort', onConfirm, onCancel }) {
+    return (
+        <div className="confirm-overlay" onClick={onCancel}>
+            <div className="confirm-box" onClick={e => e.stopPropagation()}>
+                <h3>{title}</h3>
+                <p>{message}</p>
+                <div className="confirm-btns">
+                    <button className="btn btn-secondary" onClick={onCancel}>Avbryt</button>
+                    <button className="btn btn-danger" onClick={onConfirm}>{confirmLabel}</button>
                 </div>
-            );
-        }
+            </div>
+        </div>
+    );
+}
 
-        function LoginForm({ onLogin, supabase }) {
-            const [username, setUsername] = useState('');
-            const [password, setPassword] = useState('');
-            const [error, setError] = useState('');
-            const [loading, setLoading] = useState(false);
+// ── KATEGORIHANTERARE ────────────────────────────────────
+function CategoryManager({ categories, onAdd, onDelete }) {
+    const [newName, setNewName] = useState('');
+    const [newEmoji, setNewEmoji] = useState('📌');
 
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                setLoading(true);
-                setError('');
+    const handleAdd = () => {
+        const name = newName.trim();
+        if (!name) return;
+        onAdd({ id: 'custom_' + Date.now(), name, icon: newEmoji });
+        setNewName('');
+        setNewEmoji('📌');
+    };
 
-                try {
-                    const { data, error } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('username', username)
-                        .eq('password', password)
-                        .single();
-
-                    if (error || !data) {
-                        setError('Fel användarnamn eller lösenord');
-                    } else {
-                        onLogin(data);
-                    }
-                } catch (err) {
-                    setError('Fel vid inloggning: ' + err.message);
-                }
-                
-                setLoading(false);
-            };
-
-            return (
-                <div className="login-container">
-                    <h1 className="login-title">✈️ Resebudget</h1>
-                    {error && <div className="alert alert-error">{error}</div>}
-                    <form onSubmit={handleSubmit}>
-                        <div className="form-group">
-                            <label className="form-label">Användarnamn</label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                required
-                                disabled={loading}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Lösenord</label>
-                            <input
-                                type="password"
-                                className="form-input"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                disabled={loading}
-                            />
-                        </div>
-                        <button type="submit" className="btn btn-primary" style={{width: '100%'}} disabled={loading}>
-                            {loading ? 'Loggar in...' : 'Logga in'}
-                        </button>
-                    </form>
-                </div>
-            );
-        }
-
-        function Header({ user, onLogout }) {
-            return (
-                <header className="header">
-                    <div className="logo">
-                        ✈️ Resebudget
-                    </div>
-                    <div className="user-info">
-                        <span className={`user-badge ${user.is_admin ? 'admin-badge' : ''}`}>
-                            {user.name} {user.is_admin && '(Admin)'}
-                        </span>
-                        <button className="btn btn-secondary btn-small" onClick={onLogout}>
-                            Logga ut
-                        </button>
-                    </div>
-                </header>
-            );
-        }
-
-        function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, users, currentUser, onAddTrip, onAddExpense, onDeleteExpense }) {
-            const [description, setDescription] = useState('');
-            const [amount, setAmount] = useState('');
-            const [currency, setCurrency] = useState('SEK');
-            const [category, setCategory] = useState('food');
-            const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
-            const [submitting, setSubmitting] = useState(false);
-            const [showNewTrip, setShowNewTrip] = useState(false);
-            const [newTripName, setNewTripName] = useState('');
-
-            const handleQuickAdd = async (e) => {
-                e.preventDefault();
-                if (!description || !amount || submitting || !selectedTrip) return;
-
-                setSubmitting(true);
-                const selectedCurrency = CURRENCIES.find(c => c.code === currency);
-                await onAddExpense({
-                    description,
-                    amount: parseFloat(amount),
-                    currency,
-                    exchange_rate: selectedCurrency.rate,
-                    category,
-                    date: new Date(expenseDate).toISOString()
-                });
-
-                setDescription('');
-                setAmount('');
-                setCategory('food');
-                setExpenseDate(new Date().toISOString().split('T')[0]);
-                setSubmitting(false);
-            };
-
-            const handleAddTrip = async (e) => {
-                e.preventDefault();
-                if (!newTripName) return;
-                await onAddTrip({ name: newTripName, created_at: new Date().toISOString() });
-                setNewTripName('');
-                setShowNewTrip(false);
-            };
-
-            const getCategoryInfo = (catId) => CATEGORIES.find(c => c.id === catId);
-            const getUserName = (userId) => users.find(u => u.id === userId)?.name || 'Okänd';
-
-            const currentTrip = trips.find(t => t.id === selectedTrip);
-            const totalSEK = expenses.reduce((sum, e) => sum + (e.amount * e.exchange_rate), 0);
-            
-            const categoryTotals = CATEGORIES.map(cat => ({
-                ...cat,
-                total: expenses
-                    .filter(e => e.category === cat.id)
-                    .reduce((sum, e) => sum + (e.amount * e.exchange_rate), 0)
-            })).filter(c => c.total > 0);
-
-            const perPerson = users.length > 0 ? totalSEK / users.length : 0;
-
-            return (
-                <div>
-                    {/* Resor dropdown och skapa ny resa */}
-                    <div className="card" style={{marginBottom: '2rem'}}>
-                        <div style={{display: 'flex', gap: '1rem', alignItems: 'end'}}>
-                            <div className="form-group" style={{flex: 1, marginBottom: 0}}>
-                                <label className="form-label">Välj resa</label>
-                                <select
-                                    className="form-select"
-                                    value={selectedTrip || ''}
-                                    onChange={(e) => onSelectTrip(e.target.value ? parseInt(e.target.value) : null)}
-                                >
-                                    <option value="">-- Välj en resa --</option>
-                                    {trips.map(trip => (
-                                        <option key={trip.id} value={trip.id}>
-                                            {trip.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <button 
-                                className="btn btn-primary"
-                                onClick={() => setShowNewTrip(!showNewTrip)}
-                            >
-                                + Ny resa
-                            </button>
-                        </div>
-
-                        {showNewTrip && (
-                            <form onSubmit={handleAddTrip} style={{marginTop: '1rem', display: 'flex', gap: '1rem'}}>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="Resans namn (t.ex. Thailand 2026)"
-                                    value={newTripName}
-                                    onChange={(e) => setNewTripName(e.target.value)}
-                                    required
-                                    style={{flex: 1}}
-                                />
-                                <button type="submit" className="btn btn-primary">Skapa</button>
-                                <button 
-                                    type="button" 
-                                    className="btn btn-secondary"
-                                    onClick={() => {
-                                        setShowNewTrip(false);
-                                        setNewTripName('');
-                                    }}
-                                >
-                                    Avbryt
-                                </button>
-                            </form>
+    return (
+        <div className="cat-section">
+            <div className="cat-section-title">
+                <span>Kategorier</span>
+            </div>
+            <div className="cat-chips">
+                {categories.map(cat => (
+                    <span key={cat.id} className="cat-chip">
+                        {cat.icon} {cat.name}
+                        {cat.id.startsWith('custom_') && (
+                            <button className="cat-chip-del" onClick={() => onDelete(cat.id)} title="Ta bort">×</button>
                         )}
-                    </div>
+                    </span>
+                ))}
+            </div>
+            <div style={{fontSize:'0.78rem', color:'var(--text-muted)', marginBottom:'0.5rem'}}>Lägg till ny kategori:</div>
+            <div className="emoji-picker">
+                {EMOJI_OPTIONS.map(e => (
+                    <button key={e} className={`emoji-btn ${newEmoji === e ? 'active' : ''}`} onClick={() => setNewEmoji(e)}>{e}</button>
+                ))}
+            </div>
+            <div className="cat-add-row">
+                <span style={{fontSize:'1.2rem'}}>{newEmoji}</span>
+                <input
+                    placeholder="Kategorinamn..."
+                    value={newName}
+                    onChange={e => setNewName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                />
+                <button className="btn btn-primary btn-small" onClick={handleAdd} disabled={!newName.trim()}>
+                    + Lägg till
+                </button>
+            </div>
+        </div>
+    );
+}
 
-                    {!selectedTrip ? (
-                        <div className="card" style={{textAlign: 'center', padding: '3rem'}}>
-                            <p style={{color: 'var(--text-muted)'}}>
-                                Välj en resa eller skapa en ny för att börja lägga till utgifter
-                            </p>
-                        </div>
-                    ) : (
-                        <>
-                            {/* Snabbinmatning */}
-                            <form onSubmit={handleQuickAdd} className="quick-add-form">
-                                <h3 style={{marginBottom: '1rem', fontSize: '1.25rem'}}>⚡ Lägg till utgift</h3>
-                                <div className="quick-add-grid">
-                                    <div className="form-group" style={{marginBottom: 0}}>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            placeholder="Vad köpte du?"
-                                            value={description}
-                                            onChange={(e) => setDescription(e.target.value)}
-                                            required
-                                            disabled={submitting}
-                                        />
-                                    </div>
-                                    <div className="form-group" style={{marginBottom: 0}}>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            className="form-input"
-                                            placeholder="Belopp"
-                                            value={amount}
-                                            onChange={(e) => setAmount(e.target.value)}
-                                            required
-                                            disabled={submitting}
-                                        />
-                                    </div>
-                                    <div className="form-group" style={{marginBottom: 0}}>
-                                        <select
-                                            className="form-select"
-                                            value={currency}
-                                            onChange={(e) => setCurrency(e.target.value)}
-                                            disabled={submitting}
-                                        >
-                                            {CURRENCIES.map(c => (
-                                                <option key={c.code} value={c.code}>{c.code}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="form-group" style={{marginBottom: 0}}>
-                                        <select
-                                            className="form-select"
-                                            value={category}
-                                            onChange={(e) => setCategory(e.target.value)}
-                                            disabled={submitting}
-                                        >
-                                            {CATEGORIES.map(c => (
-                                                <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="form-group" style={{marginBottom: 0}}>
-                                        <input
-                                            type="date"
-                                            className="form-input"
-                                            value={expenseDate}
-                                            onChange={(e) => setExpenseDate(e.target.value)}
-                                            disabled={submitting}
-                                            required
-                                        />
-                                    </div>
-                                    <button type="submit" className="btn btn-secondary" disabled={submitting}>
-                                        {submitting ? '...' : 'Lägg till'}
-                                    </button>
-                                </div>
-                            </form>
+// ── HUVUDAPP ─────────────────────────────────────────────
+function App() {
+    const [currentUser, setCurrentUser] = useState(null);
+    const [users, setUsers] = useState([]);
+    const [trips, setTrips] = useState([]);
+    const [expenses, setExpenses] = useState([]);
+    const [activeTab, setActiveTab] = useState('expenses');
+    const [selectedTrip, setSelectedTrip] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
 
-                            {/* Statistik */}
-                            <div className="grid" style={{marginBottom: '2rem'}}>
-                                <div className="card stat-card">
-                                    <div className="stat-value">{totalSEK.toFixed(0)} kr</div>
-                                    <div className="stat-label">Total</div>
-                                </div>
-                                <div className="card stat-card">
-                                    <div className="stat-value">{perPerson.toFixed(0)} kr</div>
-                                    <div className="stat-label">Per Person</div>
-                                </div>
-                                <div className="card stat-card">
-                                    <div className="stat-value">{expenses.length}</div>
-                                    <div className="stat-label">Utgifter</div>
-                                </div>
-                            </div>
+    useEffect(() => {
+        if (currentUser) {
+            loadData();
+            try {
+                const saved = localStorage.getItem('resebudget_cats_' + currentUser.id);
+                if (saved) setCategories(JSON.parse(saved));
+            } catch(e) {}
+        }
+    }, [currentUser]);
 
-                            {/* Kategorier */}
-                            {categoryTotals.length > 0 && (
-                                <div className="card" style={{marginBottom: '2rem'}}>
-                                    <h3 className="card-title" style={{marginBottom: '1rem'}}>Per Kategori</h3>
-                                    <div className="expense-list">
-                                        {categoryTotals.map(cat => (
-                                            <div key={cat.id} style={{display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'var(--bg)', borderRadius: '6px'}}>
-                                                <span>{cat.icon} {cat.name}</span>
-                                                <span style={{fontFamily: 'Space Mono', fontWeight: 700}}>{cat.total.toFixed(0)} kr</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+    const saveCategories = (cats) => {
+        setCategories(cats);
+        try { localStorage.setItem('resebudget_cats_' + currentUser.id, JSON.stringify(cats)); } catch(e) {}
+    };
 
-                            {/* Utgifter */}
-                            <div className="card">
-                                <h3 className="card-title" style={{marginBottom: '1rem'}}>Alla Utgifter</h3>
-                                {expenses.length === 0 ? (
-                                    <p style={{textAlign: 'center', color: 'var(--text-muted)', padding: '2rem'}}>
-                                        Inga utgifter ännu
-                                    </p>
-                                ) : (
-                                    <div className="expense-list">
-                                        {expenses.map(expense => {
-                                            const catInfo = getCategoryInfo(expense.category);
-                                            return (
-                                                <div key={expense.id} className="expense-item">
-                                                    <div className="expense-category">
-                                                        {catInfo.icon}
-                                                    </div>
-                                                    <div className="expense-details">
-                                                        <div className="expense-description">{expense.description}</div>
-                                                        <div className="expense-meta">
-                                                            {catInfo.name} • {getUserName(expense.added_by)} • {new Date(expense.date).toLocaleDateString('sv-SE')}
-                                                        </div>
-                                                    </div>
-                                                    <div className="expense-amount">
-                                                        <div className="expense-price">
-                                                            {(expense.amount * expense.exchange_rate).toFixed(0)} kr
-                                                        </div>
-                                                        <div className="expense-currency">
-                                                            ({expense.amount.toFixed(0)} {expense.currency})
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        </>
+    const loadData = async () => {
+        try {
+            setLoading(true);
+            const [{ data: usersData }, { data: tripsData }, { data: expensesData }] = await Promise.all([
+                supabase.from('users').select('*'),
+                supabase.from('trips').select('*').order('created_at', { ascending: false }),
+                supabase.from('expenses').select('*').order('date', { ascending: false })
+            ]);
+            setUsers(usersData || []);
+            setTrips(tripsData || []);
+            setExpenses(expensesData || []);
+            setLoading(false);
+        } catch (err) {
+            setError('Kunde inte ladda data: ' + err.message);
+            setLoading(false);
+        }
+    };
+
+    const handleAddTrip = async (trip) => {
+        const { data, error } = await supabase.from('trips').insert([{ ...trip, created_by: currentUser.id }]).select();
+        if (!error && data) { setTrips([data[0], ...trips]); setSelectedTrip(data[0].id); }
+    };
+
+    const handleDeleteTrip = async (id) => {
+        await supabase.from('expenses').delete().eq('trip_id', id);
+        const { error } = await supabase.from('trips').delete().eq('id', id);
+        if (!error) {
+            setTrips(trips.filter(t => t.id !== id));
+            setExpenses(expenses.filter(e => e.trip_id !== id));
+            if (selectedTrip === id) setSelectedTrip(null);
+        }
+    };
+
+    const handleAddExpense = async (expense) => {
+        const { data, error } = await supabase.from('expenses').insert([{ ...expense, trip_id: selectedTrip, added_by: currentUser.id }]).select();
+        if (!error && data) setExpenses([data[0], ...expenses]);
+    };
+
+    const handleDeleteExpense = async (id) => {
+        const { error } = await supabase.from('expenses').delete().eq('id', id);
+        if (!error) setExpenses(expenses.filter(e => e.id !== id));
+    };
+
+    if (!currentUser) return <LoginForm onLogin={setCurrentUser} />;
+    if (loading) return <div className="loading"><div className="spinner"/><p>Laddar data...</p></div>;
+
+    return (
+        <div className="app-container">
+            <Header user={currentUser} onLogout={() => setCurrentUser(null)} />
+            {error && <div className="alert alert-error">{error}</div>}
+            <div className="main-content">
+                <div className="tabs">
+                    <button className={`tab ${activeTab==='expenses'?'active':''}`} onClick={() => setActiveTab('expenses')}>Utgifter</button>
+                    {currentUser.is_admin && (
+                        <button className={`tab ${activeTab==='admin'?'active':''}`} onClick={() => setActiveTab('admin')}>Admin</button>
                     )}
                 </div>
-            );
-        }
 
-        function AdminView({ users, onAddUser, onDeleteUser, onResetPassword, onToggleAdmin }) {
-            const [showAddUser, setShowAddUser] = useState(false);
-            const [newUser, setNewUser] = useState({ username: '', password: '', name: '', is_admin: false });
-            const [submitting, setSubmitting] = useState(false);
+                {activeTab === 'expenses' && (
+                    <ExpensesView
+                        trips={trips}
+                        selectedTrip={selectedTrip}
+                        onSelectTrip={setSelectedTrip}
+                        expenses={expenses.filter(e => !selectedTrip || e.trip_id === selectedTrip)}
+                        allExpenses={expenses}
+                        users={users}
+                        currentUser={currentUser}
+                        categories={categories}
+                        onAddCategory={cat => saveCategories([...categories, cat])}
+                        onDeleteCategory={id => saveCategories(categories.filter(c => c.id !== id))}
+                        onAddTrip={handleAddTrip}
+                        onDeleteTrip={handleDeleteTrip}
+                        onAddExpense={handleAddExpense}
+                        onDeleteExpense={handleDeleteExpense}
+                    />
+                )}
 
-            const handleAddUser = async (e) => {
-                e.preventDefault();
-                setSubmitting(true);
-                await onAddUser(newUser);
-                setNewUser({ username: '', password: '', name: '', is_admin: false });
-                setShowAddUser(false);
-                setSubmitting(false);
-            };
+                {activeTab === 'admin' && currentUser.is_admin && (
+                    <AdminView
+                        users={users}
+                        onAddUser={async (user) => {
+                            const { data, error } = await supabase.from('users').insert([user]).select();
+                            if (!error && data) setUsers([...users, data[0]]);
+                        }}
+                        onDeleteUser={async (id) => {
+                            const { error } = await supabase.from('users').delete().eq('id', id);
+                            if (!error) setUsers(users.filter(u => u.id !== id));
+                        }}
+                        onResetPassword={async (id, newPassword) => {
+                            const { error } = await supabase.from('users').update({ password: newPassword }).eq('id', id);
+                            if (!error) setUsers(users.map(u => u.id === id ? { ...u, password: newPassword } : u));
+                        }}
+                        onToggleAdmin={async (id, isAdmin) => {
+                            const { error } = await supabase.from('users').update({ is_admin: isAdmin }).eq('id', id);
+                            if (!error) setUsers(users.map(u => u.id === id ? { ...u, is_admin: isAdmin } : u));
+                        }}
+                    />
+                )}
+            </div>
+        </div>
+    );
+}
 
-            return (
-                <div>
-                    <div className="card">
-                        <div className="card-header">
-                            <h3 className="card-title">Användare</h3>
-                            <button className="btn btn-primary btn-small" onClick={() => setShowAddUser(!showAddUser)}>
-                                + Lägg till användare
+// ── INLOGGNING ────────────────────────────────────────────
+function LoginForm({ onLogin }) {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true); setError('');
+        try {
+            const { data, error } = await supabase.from('users').select('*').eq('username', username).eq('password', password).single();
+            if (error || !data) setError('Fel användarnamn eller lösenord');
+            else onLogin(data);
+        } catch (err) { setError('Fel vid inloggning: ' + err.message); }
+        setLoading(false);
+    };
+
+    return (
+        <div className="login-container">
+            <h1 className="login-title">✈️ Resebudget</h1>
+            {error && <div className="alert alert-error">{error}</div>}
+            <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                    <label className="form-label">Användarnamn</label>
+                    <input type="text" className="form-input" value={username} onChange={e => setUsername(e.target.value)} required disabled={loading} />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Lösenord</label>
+                    <input type="password" className="form-input" value={password} onChange={e => setPassword(e.target.value)} required disabled={loading} />
+                </div>
+                <button type="submit" className="btn btn-primary" style={{width:'100%'}} disabled={loading}>
+                    {loading ? 'Loggar in...' : 'Logga in'}
+                </button>
+            </form>
+        </div>
+    );
+}
+
+// ── HEADER ────────────────────────────────────────────────
+function Header({ user, onLogout }) {
+    return (
+        <header className="header">
+            <div className="logo">✈️ Resebudget</div>
+            <div className="user-info">
+                <span className={`user-badge ${user.is_admin ? 'admin-badge' : ''}`}>
+                    {user.name} {user.is_admin && '(Admin)'}
+                </span>
+                <button className="btn btn-secondary btn-small" onClick={onLogout}>Logga ut</button>
+            </div>
+        </header>
+    );
+}
+
+// ── UTGIFTSVY ─────────────────────────────────────────────
+function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onAddExpense, onDeleteExpense }) {
+    const [description, setDescription] = useState('');
+    const [amount, setAmount] = useState('');
+    const [currency, setCurrency] = useState('SEK');
+    const [category, setCategory] = useState('food');
+    const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+    const [submitting, setSubmitting] = useState(false);
+    const [showNewTrip, setShowNewTrip] = useState(false);
+    const [newTripName, setNewTripName] = useState('');
+    const [showCatManager, setShowCatManager] = useState(false);
+    const [confirm, setConfirm] = useState(null); // { type: 'trip'|'expense', id, name }
+
+    const handleAddExpense = async (e) => {
+        e.preventDefault();
+        if (!description || !amount || submitting || !selectedTrip) return;
+        setSubmitting(true);
+        const sel = CURRENCIES.find(c => c.code === currency);
+        await onAddExpense({ description, amount: parseFloat(amount), currency, exchange_rate: sel.rate, category, date: new Date(expenseDate).toISOString() });
+        setDescription(''); setAmount(''); setCategory('food');
+        setExpenseDate(new Date().toISOString().split('T')[0]);
+        setSubmitting(false);
+    };
+
+    const handleAddTrip = async (e) => {
+        e.preventDefault();
+        if (!newTripName) return;
+        await onAddTrip({ name: newTripName, created_at: new Date().toISOString() });
+        setNewTripName(''); setShowNewTrip(false);
+    };
+
+    const getCatInfo = (id) => categories.find(c => c.id === id) || { icon: '📌', name: id };
+    const getUserName = (uid) => users.find(u => u.id === uid)?.name || 'Okänd';
+
+    const totalSEK = expenses.reduce((sum, e) => sum + (e.amount * e.exchange_rate), 0);
+    const perPerson = users.length > 0 ? totalSEK / users.length : 0;
+    const categoryTotals = categories.map(cat => ({
+        ...cat,
+        total: expenses.filter(e => e.category === cat.id).reduce((s, e) => s + e.amount * e.exchange_rate, 0)
+    })).filter(c => c.total > 0);
+
+    return (
+        <div>
+            {/* BEKRÄFTELSEDIALOG */}
+            {confirm && (
+                <ConfirmDialog
+                    title={confirm.type === 'trip' ? 'Ta bort resa?' : 'Ta bort utgift?'}
+                    message={confirm.type === 'trip'
+                        ? `"${confirm.name}" och alla dess utgifter raderas permanent. Det går inte att ångra.`
+                        : `"${confirm.name}" raderas permanent.`}
+                    onConfirm={() => {
+                        if (confirm.type === 'trip') onDeleteTrip(confirm.id);
+                        else onDeleteExpense(confirm.id);
+                        setConfirm(null);
+                    }}
+                    onCancel={() => setConfirm(null)}
+                />
+            )}
+
+            {/* RESOR */}
+            <div className="card" style={{marginBottom:'2rem'}}>
+                <div className="card-header">
+                    <span className="card-title" style={{fontSize:'1rem'}}>Dina resor</span>
+                    <button className="btn btn-primary btn-small" onClick={() => setShowNewTrip(!showNewTrip)}>
+                        {showNewTrip ? '× Avbryt' : '+ Ny resa'}
+                    </button>
+                </div>
+
+                {showNewTrip && (
+                    <form onSubmit={handleAddTrip} style={{marginBottom:'1rem', display:'flex', gap:'0.75rem'}}>
+                        <input type="text" className="form-input" placeholder="Resans namn (t.ex. Thailand 2026)" value={newTripName} onChange={e => setNewTripName(e.target.value)} required style={{flex:1}} />
+                        <button type="submit" className="btn btn-primary btn-small">Skapa</button>
+                    </form>
+                )}
+
+                {trips.length === 0 ? (
+                    <p style={{color:'var(--text-muted)', fontSize:'0.95rem'}}>Inga resor ännu. Skapa din första resa ovan.</p>
+                ) : (
+                    <div style={{display:'flex', flexDirection:'column', gap:'0.3rem'}}>
+                        {trips.map(trip => {
+                            const count = allExpenses.filter(e => e.trip_id === trip.id).length;
+                            return (
+                                <div
+                                    key={trip.id}
+                                    className={`trip-row ${selectedTrip === trip.id ? 'selected' : ''}`}
+                                    onClick={() => onSelectTrip(trip.id)}
+                                >
+                                    <span style={{fontSize:'1rem'}}>{selectedTrip === trip.id ? '▶' : '○'}</span>
+                                    <span className="trip-row-name">{trip.name}</span>
+                                    <span className="trip-row-count">{count} {count === 1 ? 'utgift' : 'utgifter'}</span>
+                                    <button
+                                        className="btn btn-danger btn-icon btn-small"
+                                        title="Ta bort resa"
+                                        onClick={e => { e.stopPropagation(); setConfirm({ type:'trip', id:trip.id, name:trip.name }); }}
+                                    >🗑</button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {!selectedTrip ? (
+                <div className="card" style={{textAlign:'center', padding:'3rem'}}>
+                    <p style={{color:'var(--text-muted)'}}>Välj en resa för att se och lägga till utgifter</p>
+                </div>
+            ) : (
+                <>
+                    {/* KATEGORIER */}
+                    <div style={{marginBottom:'0.5rem'}}>
+                        <button
+                            className="btn btn-secondary btn-small"
+                            style={{marginBottom:'0.75rem'}}
+                            onClick={() => setShowCatManager(!showCatManager)}
+                        >
+                            {showCatManager ? '▲ Dölj kategorier' : '⚙ Hantera kategorier'}
+                        </button>
+                        {showCatManager && (
+                            <CategoryManager
+                                categories={categories}
+                                onAdd={onAddCategory}
+                                onDelete={onDeleteCategory}
+                            />
+                        )}
+                    </div>
+
+                    {/* LÄGG TILL UTGIFT */}
+                    <form onSubmit={handleAddExpense} className="quick-add-form">
+                        <h3 style={{marginBottom:'1rem', fontSize:'1.25rem'}}>⚡ Lägg till utgift</h3>
+                        <div className="quick-add-grid">
+                            <div className="form-group" style={{marginBottom:0}}>
+                                <input type="text" className="form-input" placeholder="Vad köpte du?" value={description} onChange={e => setDescription(e.target.value)} required disabled={submitting} />
+                            </div>
+                            <div className="form-group" style={{marginBottom:0}}>
+                                <input type="number" step="0.01" className="form-input" placeholder="Belopp" value={amount} onChange={e => setAmount(e.target.value)} required disabled={submitting} />
+                            </div>
+                            <div className="form-group" style={{marginBottom:0}}>
+                                <select className="form-select" value={currency} onChange={e => setCurrency(e.target.value)} disabled={submitting}>
+                                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group" style={{marginBottom:0}}>
+                                <select className="form-select" value={category} onChange={e => setCategory(e.target.value)} disabled={submitting}>
+                                    {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group" style={{marginBottom:0}}>
+                                <input type="date" className="form-input" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} disabled={submitting} required />
+                            </div>
+                            <button type="submit" className="btn btn-secondary" disabled={submitting || !selectedTrip}>
+                                {submitting ? '...' : 'Lägg till'}
                             </button>
                         </div>
+                    </form>
 
-                        {showAddUser && (
-                            <form onSubmit={handleAddUser} style={{marginBottom: '2rem', padding: '1rem', background: 'var(--bg)', borderRadius: '8px'}}>
-                                <div className="form-group">
-                                    <label className="form-label">Namn</label>
-                                    <input
-                                        type="text"
-                                        className="form-input"
-                                        value={newUser.name}
-                                        onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                                        required
-                                        disabled={submitting}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Användarnamn</label>
-                                    <input
-                                        type="text"
-                                        className="form-input"
-                                        value={newUser.username}
-                                        onChange={(e) => setNewUser({...newUser, username: e.target.value})}
-                                        required
-                                        disabled={submitting}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Lösenord</label>
-                                    <input
-                                        type="password"
-                                        className="form-input"
-                                        value={newUser.password}
-                                        onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                                        required
-                                        disabled={submitting}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                                        <input
-                                            type="checkbox"
-                                            checked={newUser.is_admin}
-                                            onChange={(e) => setNewUser({...newUser, is_admin: e.target.checked})}
-                                            disabled={submitting}
-                                        />
-                                        Admin-rättigheter
-                                    </label>
-                                </div>
-                                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                                    {submitting ? 'Skapar...' : 'Skapa användare'}
-                                </button>
-                            </form>
-                        )}
-
-                        <div className="user-list">
-                            {users.map(user => (
-                                <div key={user.id} className="user-item">
-                                    <div className="user-item-info">
-                                        <div className="user-avatar">
-                                            {user.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <div style={{fontWeight: 500}}>{user.name}</div>
-                                            <div style={{fontSize: '0.875rem', color: 'var(--text-muted)'}}>
-                                                @{user.username} {user.is_admin && '• Admin'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
-                                        <button 
-                                            className="btn btn-secondary btn-small"
-                                            onClick={() => {
-                                                const newPass = prompt('Nytt lösenord för ' + user.name);
-                                                if (newPass) onResetPassword(user.id, newPass);
-                                            }}
-                                        >
-                                            Återställ lösenord
-                                        </button>
-                                        <button 
-                                            className={`btn btn-small ${user.is_admin ? 'btn-secondary' : 'btn-primary'}`}
-                                            onClick={() => {
-                                                if (confirm(`${user.is_admin ? 'Ta bort' : 'Ge'} admin-rättigheter för ${user.name}?`)) {
-                                                    onToggleAdmin(user.id, !user.is_admin);
-                                                }
-                                            }}
-                                        >
-                                            {user.is_admin ? '⬇️ Ta bort admin' : '⬆️ Gör till admin'}
-                                        </button>
-                                        <button 
-                                            className="btn btn-danger btn-small"
-                                            onClick={() => {
-                                                if (confirm('Ta bort ' + user.name + '?')) {
-                                                    onDeleteUser(user.id);
-                                                }
-                                            }}
-                                        >
-                                            Ta bort
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                    {/* STATISTIK */}
+                    <div className="grid">
+                        <div className="card stat-card">
+                            <div className="stat-value">{totalSEK.toFixed(0)} kr</div>
+                            <div className="stat-label">Total</div>
+                        </div>
+                        <div className="card stat-card">
+                            <div className="stat-value">{perPerson.toFixed(0)} kr</div>
+                            <div className="stat-label">Per Person</div>
+                        </div>
+                        <div className="card stat-card">
+                            <div className="stat-value">{expenses.length}</div>
+                            <div className="stat-label">Utgifter</div>
                         </div>
                     </div>
-                </div>
-            );
-        }
 
-        ReactDOM.render(<App />, document.getElementById('root'));
-    </script>
+                    {/* PER KATEGORI */}
+                    {categoryTotals.length > 0 && (
+                        <div className="card" style={{marginBottom:'2rem'}}>
+                            <h3 className="card-title" style={{marginBottom:'1rem'}}>Per Kategori</h3>
+                            <div className="expense-list">
+                                {categoryTotals.map(cat => (
+                                    <div key={cat.id} style={{display:'flex', justifyContent:'space-between', padding:'0.75rem', background:'var(--bg)', borderRadius:'6px'}}>
+                                        <span>{cat.icon} {cat.name}</span>
+                                        <span style={{fontFamily:'Space Mono', fontWeight:700}}>{cat.total.toFixed(0)} kr</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* UTGIFTSLISTA */}
+                    <div className="card">
+                        <h3 className="card-title" style={{marginBottom:'1rem'}}>Alla utgifter</h3>
+                        {expenses.length === 0 ? (
+                            <p style={{textAlign:'center', color:'var(--text-muted)', padding:'2rem'}}>Inga utgifter ännu</p>
+                        ) : (
+                            <div className="expense-list">
+                                {expenses.map(expense => {
+                                    const cat = getCatInfo(expense.category);
+                                    return (
+                                        <div key={expense.id} className="expense-item">
+                                            <div className="expense-category">{cat.icon}</div>
+                                            <div className="expense-details">
+                                                <div className="expense-description">{expense.description}</div>
+                                                <div className="expense-meta">
+                                                    {cat.name} · {getUserName(expense.added_by)} · {new Date(expense.date).toLocaleDateString('sv-SE')}
+                                                </div>
+                                            </div>
+                                            <div className="expense-amount">
+                                                <div className="expense-price">{(expense.amount * expense.exchange_rate).toFixed(0)} kr</div>
+                                                <div className="expense-currency">({expense.amount.toFixed(0)} {expense.currency})</div>
+                                            </div>
+                                            <button
+                                                className="btn btn-danger btn-icon btn-small"
+                                                title="Ta bort utgift"
+                                                onClick={() => setConfirm({ type:'expense', id:expense.id, name:expense.description })}
+                                            >🗑</button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
+// ── ADMIN ─────────────────────────────────────────────────
+function AdminView({ users, onAddUser, onDeleteUser, onResetPassword, onToggleAdmin }) {
+    const [showAddUser, setShowAddUser] = useState(false);
+    const [newUser, setNewUser] = useState({ username:'', password:'', name:'', is_admin:false });
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleAddUser = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        await onAddUser(newUser);
+        setNewUser({ username:'', password:'', name:'', is_admin:false });
+        setShowAddUser(false);
+        setSubmitting(false);
+    };
+
+    return (
+        <div>
+            <div className="card">
+                <div className="card-header">
+                    <h3 className="card-title">Användare</h3>
+                    <button className="btn btn-primary btn-small" onClick={() => setShowAddUser(!showAddUser)}>+ Lägg till användare</button>
+                </div>
+
+                {showAddUser && (
+                    <form onSubmit={handleAddUser} style={{marginBottom:'2rem', padding:'1rem', background:'var(--bg)', borderRadius:'8px'}}>
+                        {[['Namn','name','text'],['Användarnamn','username','text'],['Lösenord','password','password']].map(([label, key, type]) => (
+                            <div className="form-group" key={key}>
+                                <label className="form-label">{label}</label>
+                                <input type={type} className="form-input" value={newUser[key]} onChange={e => setNewUser({...newUser, [key]: e.target.value})} required disabled={submitting} />
+                            </div>
+                        ))}
+                        <div className="form-group">
+                            <label style={{display:'flex', alignItems:'center', gap:'0.5rem', cursor:'pointer'}}>
+                                <input type="checkbox" checked={newUser.is_admin} onChange={e => setNewUser({...newUser, is_admin: e.target.checked})} disabled={submitting} />
+                                Admin-rättigheter
+                            </label>
+                        </div>
+                        <button type="submit" className="btn btn-primary" disabled={submitting}>
+                            {submitting ? 'Skapar...' : 'Skapa användare'}
+                        </button>
+                    </form>
+                )}
+
+                <div className="user-list">
+                    {users.map(user => (
+                        <div key={user.id} className="user-item">
+                            <div className="user-item-info">
+                                <div className="user-avatar">{user.name.charAt(0).toUpperCase()}</div>
+                                <div>
+                                    <div style={{fontWeight:500}}>{user.name}</div>
+                                    <div style={{fontSize:'0.875rem', color:'var(--text-muted)'}}>@{user.username}{user.is_admin && ' · Admin'}</div>
+                                </div>
+                            </div>
+                            <div style={{display:'flex', gap:'0.5rem', flexWrap:'wrap'}}>
+                                <button className="btn btn-secondary btn-small" onClick={() => { const p = prompt('Nytt lösenord för ' + user.name); if (p) onResetPassword(user.id, p); }}>Återställ lösenord</button>
+                                <button className={`btn btn-small ${user.is_admin ? 'btn-secondary' : 'btn-primary'}`} onClick={() => { if (confirm(`${user.is_admin ? 'Ta bort' : 'Ge'} admin för ${user.name}?`)) onToggleAdmin(user.id, !user.is_admin); }}>
+                                    {user.is_admin ? '⬇️ Ta bort admin' : '⬆️ Gör till admin'}
+                                </button>
+                                <button className="btn btn-danger btn-small" onClick={() => { if (confirm('Ta bort ' + user.name + '? Det går inte att ångra.')) onDeleteUser(user.id); }}>Ta bort</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
 </body>
 </html>
