@@ -759,16 +759,6 @@ function SightsPanel({ trip, onClose }) {
     );
 }
 
-                {!isOwner && (
-                    <div style={{color:'var(--text-muted)', fontSize:'0.85rem', fontStyle:'italic', borderTop:'1px solid var(--border)', paddingTop:'0.75rem'}}>
-                        Enbart resans ägare kan bjuda in eller ta bort medresenärer.
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
-
 // ── RESAKORT ─────────────────────────────────────────────
 function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip }) {
     const [showNewTrip, setShowNewTrip] = useState(false);
