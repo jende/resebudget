@@ -760,7 +760,7 @@ function SightsPanel({ trip, onClose }) {
 }
 
 // ── RESAKORT ─────────────────────────────────────────────
-function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip }) {
+function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip }) {
     const [showNewTrip, setShowNewTrip] = useState(false);
     const [newTripName, setNewTripName] = useState('');
     const [newTripBudget, setNewTripBudget] = useState('');
@@ -846,6 +846,11 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
                             <div className="trip-card-footer">
                                 <span className="trip-card-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</span>
                                 <div style={{display:'flex', gap:'0.3rem'}}>
+                                    <button
+                                        className="trip-card-del"
+                                        title="Flytta tillbaka till Planerade resor"
+                                        onClick={e => { e.stopPropagation(); onUnplanTrip(trip.id, trip.name); }}
+                                    >↩</button>
                                     <button
                                         className="trip-card-del"
                                         title="Avsluta resa"
@@ -1045,6 +1050,15 @@ function App() {
         }
     };
 
+    const handleUnplanTrip = async (id) => {
+        const { error } = await supabase.from('trips').update({ is_planned: true }).eq('id', id);
+        if (!error) {
+            setTrips(trips.map(t => t.id === id ? { ...t, is_planned: true } : t));
+            if (selectedTrip === id) setSelectedTrip(null);
+            setActiveTab('planned');
+        }
+    };
+
     const handleDeleteTrip = async (id) => {
         await supabase.from('expenses').delete().eq('trip_id', id);
         const { error } = await supabase.from('trips').delete().eq('id', id);
@@ -1139,6 +1153,7 @@ function App() {
                         onAddTrip={handleAddTrip}
                         onDeleteTrip={handleDeleteTrip}
                         onCompleteTrip={handleCompleteTrip}
+                        onUnplanTrip={handleUnplanTrip}
                         onAddExpense={handleAddExpense}
                         onDeleteExpense={handleDeleteExpense}
                     />
@@ -1782,7 +1797,7 @@ function Header({ user, onLogout, onAdminClick }) {
 }
 
 // ── UTGIFTSVY ─────────────────────────────────────────────
-function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onCompleteTrip, onAddExpense, onDeleteExpense }) {
+function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onAddExpense, onDeleteExpense }) {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [currency, setCurrency] = useState('SEK');
@@ -1821,16 +1836,19 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
         <div>
             {confirm && (
                 <ConfirmDialog
-                    title={confirm.type === 'trip' ? 'Ta bort resa?' : confirm.type === 'complete' ? 'Avsluta resa?' : 'Ta bort utgift?'}
+                    title={confirm.type === 'trip' ? 'Ta bort resa?' : confirm.type === 'complete' ? 'Avsluta resa?' : confirm.type === 'unplan' ? 'Flytta till Planerade resor?' : 'Ta bort utgift?'}
                     message={confirm.type === 'trip'
                         ? `"${confirm.name}" och alla dess utgifter raderas permanent. Det går inte att ångra.`
                         : confirm.type === 'complete'
                         ? `"${confirm.name}" markeras som avslutad och flyttas till Avslutade Resor. Du kan fortfarande se den där.`
+                        : confirm.type === 'unplan'
+                        ? `"${confirm.name}" flyttas tillbaka till Planerade Resor. Utgifterna sparas kvar.`
                         : `"${confirm.name}" raderas permanent.`}
-                    confirmLabel={confirm.type === 'complete' ? 'Avsluta resa' : 'Ta bort'}
+                    confirmLabel={confirm.type === 'complete' ? 'Avsluta resa' : confirm.type === 'unplan' ? 'Flytta tillbaka' : 'Ta bort'}
                     onConfirm={() => {
                         if (confirm.type === 'trip') onDeleteTrip(confirm.id);
                         else if (confirm.type === 'complete') onCompleteTrip(confirm.id);
+                        else if (confirm.type === 'unplan') onUnplanTrip(confirm.id);
                         else onDeleteExpense(confirm.id);
                         setConfirm(null);
                     }}
@@ -1847,6 +1865,7 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                 onAddTrip={onAddTrip}
                 onDeleteTrip={handleDeleteTripConfirm}
                 onCompleteTrip={(id, name) => setConfirm({ type:'complete', id, name })}
+                onUnplanTrip={(id, name) => setConfirm({ type:'unplan', id, name })}
             />
 
             {!selectedTrip ? (
