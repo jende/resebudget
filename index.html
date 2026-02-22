@@ -394,16 +394,43 @@ const DEFAULT_CATEGORIES = [
 
 const EMOJI_OPTIONS = ['🍽️','🚗','🏨','🎭','🛍️','📌','☕','🍺','🎵','⚽','🏖️','🎡','💊','📸','🚢','✈️','🚂','🏔️','🎰','🎾','🛺','🤿','🎪','🛒'];
 
-const CURRENCIES = [
-    { code: 'SEK', symbol: 'kr', rate: 1 },
-    { code: 'EUR', symbol: '€', rate: 11.5 },
-    { code: 'USD', symbol: '$', rate: 10.8 },
-    { code: 'GBP', symbol: '£', rate: 13.5 },
-    { code: 'NOK', symbol: 'kr', rate: 1.0 },
-    { code: 'DKK', symbol: 'kr', rate: 1.54 },
-    { code: 'THB', symbol: '฿', rate: 0.31 },
-    { code: 'JPY', symbol: '¥', rate: 0.073 }
+const CURRENCY_META = [
+    { code: 'SEK', symbol: 'kr' },
+    { code: 'EUR', symbol: '€' },
+    { code: 'USD', symbol: '$' },
+    { code: 'GBP', symbol: '£' },
+    { code: 'NOK', symbol: 'kr' },
+    { code: 'DKK', symbol: 'kr' },
+    { code: 'THB', symbol: '฿' },
+    { code: 'JPY', symbol: '¥' }
 ];
+const FALLBACK_RATES = { SEK:1, EUR:11.5, USD:10.8, GBP:13.5, NOK:1.0, DKK:1.54, THB:0.31, JPY:0.073 };
+
+function useLiveRates() {
+    const [rates, setRates] = React.useState(FALLBACK_RATES);
+    const [ratesUpdated, setRatesUpdated] = React.useState(null);
+    React.useEffect(() => {
+        fetch('https://api.frankfurter.app/latest?from=SEK&to=EUR,USD,GBP,NOK,DKK,THB,JPY')
+            .then(r => r.json())
+            .then(data => {
+                if (data.rates) {
+                    const newRates = { SEK: 1 };
+                    Object.entries(data.rates).forEach(([code, rate]) => {
+                        // frankfurter gives X SEK per 1 foreign — we want SEK per 1 foreign = 1/rate_of_foreign_in_SEK
+                        // actually frankfurter from=SEK gives: 1 SEK = X foreign, so 1 foreign = 1/(X) SEK? No:
+                        // from=SEK means base=SEK, so rates = { EUR: 0.087 } means 1 SEK = 0.087 EUR
+                        // We want: 1 EUR = ? SEK → 1 / 0.087 = 11.49 SEK ✓
+                        newRates[code] = 1 / data.rates[code];
+                    });
+                    setRates(newRates);
+                    setRatesUpdated(new Date().toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'}));
+                }
+            })
+            .catch(() => {}); // silently keep fallback
+    }, []);
+    const getCurrencies = () => CURRENCY_META.map(c => ({ ...c, rate: rates[c.code] || FALLBACK_RATES[c.code] }));
+    return { getCurrencies, ratesUpdated };
+}
 
 // ── BEKRÄFTELSEDIALOG ────────────────────────────────────
 function ConfirmDialog({ title, message, confirmLabel = 'Ta bort', onConfirm, onCancel }) {
@@ -764,6 +791,8 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
     const [showNewTrip, setShowNewTrip] = useState(false);
     const [newTripName, setNewTripName] = useState('');
     const [newTripBudget, setNewTripBudget] = useState('');
+    const [newTripStartDate, setNewTripStartDate] = useState('');
+    const [newTripEndDate, setNewTripEndDate] = useState('');
     const [sightsPanelTrip, setSightsPanelTrip] = useState(null);
 
     const handleAddTrip = async (e) => {
@@ -772,11 +801,12 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
         await onAddTrip({
             name: newTripName.trim(),
             budget: newTripBudget ? parseFloat(newTripBudget) : null,
+            start_date: newTripStartDate || null,
+            end_date: newTripEndDate || null,
             is_completed: false,
             created_at: new Date().toISOString()
         });
-        setNewTripName('');
-        setNewTripBudget('');
+        setNewTripName(''); setNewTripBudget(''); setNewTripStartDate(''); setNewTripEndDate('');
         setShowNewTrip(false);
     };
 
@@ -906,6 +936,16 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
                                     value={newTripBudget}
                                     onChange={e => setNewTripBudget(e.target.value)}
                                 />
+                            </div>
+                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem'}}>
+                                <div className="form-group" style={{marginBottom:0}}>
+                                    <label className="form-label">Startdatum <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
+                                    <input type="date" className="form-input" value={newTripStartDate} onChange={e => setNewTripStartDate(e.target.value)} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Slutdatum <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
+                                    <input type="date" className="form-input" value={newTripEndDate} onChange={e => setNewTripEndDate(e.target.value)} min={newTripStartDate} />
+                                </div>
                             </div>
                             <div style={{display:'flex', gap:'0.75rem'}}>
                                 <button type="button" className="btn btn-secondary" style={{flex:1}} onClick={() => setShowNewTrip(false)}>Avbryt</button>
@@ -1082,6 +1122,11 @@ function App() {
         if (!error) setExpenses(expenses.filter(e => e.id !== id));
     };
 
+    const handleUpdateExpense = async (id, updates) => {
+        const { error } = await supabase.from('expenses').update(updates).eq('id', id);
+        if (!error) setExpenses(expenses.map(e => e.id === id ? { ...e, ...updates } : e));
+    };
+
     if (!currentUser) return <LoginForm onLogin={setCurrentUser} />;
     if (loading) return <div className="loading"><div className="spinner"/><p>Laddar data...</p></div>;
 
@@ -1159,6 +1204,7 @@ function App() {
                         onUnplanTrip={handleUnplanTrip}
                         onAddExpense={handleAddExpense}
                         onDeleteExpense={handleDeleteExpense}
+                        onUpdateExpense={handleUpdateExpense}
                     />
                 )}
 
@@ -1800,26 +1846,46 @@ function Header({ user, onLogout, onAdminClick }) {
 }
 
 // ── UTGIFTSVY ─────────────────────────────────────────────
-function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onAddExpense, onDeleteExpense }) {
+function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onAddExpense, onDeleteExpense, onUpdateExpense }) {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [currency, setCurrency] = useState('SEK');
     const [category, setCategory] = useState('food');
     const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+    const [note, setNote] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [showCatManager, setShowCatManager] = useState(false);
     const [confirm, setConfirm] = useState(null);
-    const [expenseView, setExpenseView] = useState('list'); // 'list' | 'day'
+    const [expenseView, setExpenseView] = useState('list');
+    const [editingExpense, setEditingExpense] = useState(null); // expense being edited
+
+    const { getCurrencies, ratesUpdated } = useLiveRates();
+    const CURRENCIES = getCurrencies();
 
     const handleAddExpense = async (e) => {
         e.preventDefault();
         if (!description || !amount || submitting || !selectedTrip) return;
         setSubmitting(true);
         const sel = CURRENCIES.find(c => c.code === currency);
-        await onAddExpense({ description, amount: parseFloat(amount), currency, exchange_rate: sel.rate, category, date: new Date(expenseDate).toISOString() });
-        setDescription(''); setAmount(''); setCategory('food');
+        await onAddExpense({ description, amount: parseFloat(amount), currency, exchange_rate: sel.rate, category, date: new Date(expenseDate).toISOString(), note: note.trim() });
+        setDescription(''); setAmount(''); setCategory('food'); setNote('');
         setExpenseDate(new Date().toISOString().split('T')[0]);
         setSubmitting(false);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingExpense) return;
+        const sel = CURRENCIES.find(c => c.code === editingExpense.currency);
+        await onUpdateExpense(editingExpense.id, {
+            description: editingExpense.description,
+            amount: parseFloat(editingExpense.amount),
+            currency: editingExpense.currency,
+            exchange_rate: sel ? sel.rate : editingExpense.exchange_rate,
+            category: editingExpense.category,
+            date: new Date(editingExpense.date).toISOString(),
+            note: editingExpense.note || ''
+        });
+        setEditingExpense(null);
     };
 
     const handleDeleteTripConfirm = (id, name) => {
@@ -1834,6 +1900,22 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
         ...cat,
         total: expenses.filter(e => e.category === cat.id).reduce((s, e) => s + e.amount * e.exchange_rate, 0)
     })).filter(c => c.total > 0);
+
+    // Days remaining — only if selected trip has BOTH start_date and end_date
+    const selectedTripObj = trips.find(t => t.id === selectedTrip);
+    const daysRemaining = (() => {
+        if (!selectedTripObj?.start_date || !selectedTripObj?.end_date) return null;
+        const today = new Date(); today.setHours(0,0,0,0);
+        const end = new Date(selectedTripObj.end_date); end.setHours(0,0,0,0);
+        const diff = Math.ceil((end - today) / 86400000);
+        return diff;
+    })();
+    const totalDays = (() => {
+        if (!selectedTripObj?.start_date || !selectedTripObj?.end_date) return null;
+        const s = new Date(selectedTripObj.start_date);
+        const e = new Date(selectedTripObj.end_date);
+        return Math.ceil((e - s) / 86400000);
+    })();
 
     return (
         <div>
@@ -1857,6 +1939,64 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                     }}
                     onCancel={() => setConfirm(null)}
                 />
+            )}
+
+            {/* REDIGERA UTGIFT MODAL */}
+            {editingExpense && (
+                <div className="modal-overlay" onClick={() => setEditingExpense(null)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'480px'}}>
+                        <div className="modal-header">
+                            <span className="modal-title">✏️ Redigera utgift</span>
+                            <button className="close-btn" onClick={() => setEditingExpense(null)}>×</button>
+                        </div>
+                        <div style={{display:'flex', flexDirection:'column', gap:'0.75rem'}}>
+                            <div className="form-group" style={{marginBottom:0}}>
+                                <label className="form-label">Beskrivning</label>
+                                <input className="form-input" value={editingExpense.description}
+                                    onChange={e => setEditingExpense({...editingExpense, description: e.target.value})} />
+                            </div>
+                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem'}}>
+                                <div className="form-group" style={{marginBottom:0}}>
+                                    <label className="form-label">Belopp</label>
+                                    <input type="number" step="0.01" className="form-input" value={editingExpense.amount}
+                                        onChange={e => setEditingExpense({...editingExpense, amount: e.target.value})} />
+                                </div>
+                                <div className="form-group" style={{marginBottom:0}}>
+                                    <label className="form-label">Valuta</label>
+                                    <select className="form-select" value={editingExpense.currency}
+                                        onChange={e => setEditingExpense({...editingExpense, currency: e.target.value})}>
+                                        {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem'}}>
+                                <div className="form-group" style={{marginBottom:0}}>
+                                    <label className="form-label">Kategori</label>
+                                    <select className="form-select" value={editingExpense.category}
+                                        onChange={e => setEditingExpense({...editingExpense, category: e.target.value})}>
+                                        {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group" style={{marginBottom:0}}>
+                                    <label className="form-label">Datum</label>
+                                    <input type="date" className="form-input" value={editingExpense.date ? editingExpense.date.split('T')[0] : ''}
+                                        onChange={e => setEditingExpense({...editingExpense, date: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="form-group" style={{marginBottom:0}}>
+                                <label className="form-label">Anteckning</label>
+                                <textarea className="form-input" rows="3" placeholder="Valfri anteckning..."
+                                    style={{resize:'vertical', fontFamily:'inherit'}}
+                                    value={editingExpense.note || ''}
+                                    onChange={e => setEditingExpense({...editingExpense, note: e.target.value})} />
+                            </div>
+                            <div style={{display:'flex', gap:'0.75rem', marginTop:'0.25rem'}}>
+                                <button className="btn btn-secondary" style={{flex:1}} onClick={() => setEditingExpense(null)}>Avbryt</button>
+                                <button className="btn btn-primary" style={{flex:1}} onClick={handleSaveEdit}>💾 Spara</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* RESAKORT */}
@@ -1907,7 +2047,7 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                             </div>
                             <div className="form-group" style={{marginBottom:0}}>
                                 <select className="form-select" value={currency} onChange={e => setCurrency(e.target.value)} disabled={submitting}>
-                                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} {c.rate !== FALLBACK_RATES[c.code] ? '●' : ''}</option>)}
                                 </select>
                             </div>
                             <div className="form-group" style={{marginBottom:0}}>
@@ -1918,13 +2058,21 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                             <div className="form-group" style={{marginBottom:0}}>
                                 <input type="date" className="form-input" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} disabled={submitting} required />
                             </div>
-                            <button type="submit" className="btn btn-secondary" disabled={submitting || !selectedTrip}>
+                            <div className="form-group" style={{marginBottom:0, gridColumn:'1/-1'}}>
+                                <input type="text" className="form-input" placeholder="Anteckning (valfritt)..." value={note} onChange={e => setNote(e.target.value)} disabled={submitting} />
+                            </div>
+                            <button type="submit" className="btn btn-secondary" style={{gridColumn:'1/-1'}} disabled={submitting || !selectedTrip}>
                                 {submitting ? '...' : 'Lägg till'}
                             </button>
                         </div>
+                        {ratesUpdated && (
+                            <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'0.5rem'}}>
+                                📡 Valutakurser uppdaterade {ratesUpdated}
+                            </div>
+                        )}
                     </form>
 
-                    {/* STATISTIK – bara total och antal */}
+                    {/* STATISTIK */}
                     <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))'}}>
                         <div className="card stat-card">
                             <div className="stat-value">{totalSEK.toFixed(0)} kr</div>
@@ -1934,6 +2082,21 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                             <div className="stat-value">{expenses.length}</div>
                             <div className="stat-label">Utgifter</div>
                         </div>
+                        {daysRemaining !== null && (
+                            <div className="card stat-card">
+                                <div className="stat-value" style={{color: daysRemaining < 0 ? 'var(--danger)' : daysRemaining <= 2 ? '#f57f17' : 'var(--primary)'}}>
+                                    {daysRemaining < 0 ? 0 : daysRemaining}
+                                </div>
+                                <div className="stat-label">
+                                    {daysRemaining < 0 ? 'Resan avslutad' : 'Dagar kvar'}
+                                </div>
+                                {daysRemaining >= 0 && totalDays > 0 && expenses.length > 0 && (
+                                    <div style={{fontSize:'0.8rem', color:'var(--text-muted)', marginTop:'0.3rem'}}>
+                                        {(totalSEK / Math.max(1, totalDays - daysRemaining)).toFixed(0)} kr/dag hittills
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* PER KATEGORI */}
@@ -1971,23 +2134,35 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                                 {expenses.map(expense => {
                                     const cat = getCatInfo(expense.category);
                                     return (
-                                        <div key={expense.id} className="expense-item">
+                                        <div key={expense.id} className="expense-item" style={{flexWrap:'wrap'}}>
                                             <div className="expense-category">{cat.icon}</div>
-                                            <div className="expense-details">
+                                            <div className="expense-details" style={{flex:1, minWidth:0}}>
                                                 <div className="expense-description">{expense.description}</div>
                                                 <div className="expense-meta">
                                                     {cat.name} · {getUserName(expense.added_by)} · {new Date(expense.date).toLocaleDateString('sv-SE')}
                                                 </div>
+                                                {expense.note && (
+                                                    <div style={{fontSize:'0.78rem', color:'var(--text-muted)', marginTop:'0.2rem', fontStyle:'italic'}}>
+                                                        📝 {expense.note}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="expense-amount">
                                                 <div className="expense-price">{(expense.amount * expense.exchange_rate).toFixed(0)} kr</div>
                                                 <div className="expense-currency">({expense.amount.toFixed(0)} {expense.currency})</div>
                                             </div>
-                                            <button
-                                                className="btn btn-danger btn-icon btn-small"
-                                                title="Ta bort utgift"
-                                                onClick={() => setConfirm({ type:'expense', id:expense.id, name:expense.description })}
-                                            >🗑</button>
+                                            <div style={{display:'flex', gap:'0.3rem'}}>
+                                                <button
+                                                    className="btn btn-secondary btn-icon btn-small"
+                                                    title="Redigera utgift"
+                                                    onClick={() => setEditingExpense({...expense, date: expense.date.split('T')[0]})}
+                                                >✏️</button>
+                                                <button
+                                                    className="btn btn-danger btn-icon btn-small"
+                                                    title="Ta bort utgift"
+                                                    onClick={() => setConfirm({ type:'expense', id:expense.id, name:expense.description })}
+                                                >🗑</button>
+                                            </div>
                                         </div>
                                     );
                                 })}
