@@ -468,11 +468,171 @@ function BudgetBar({ budget, spent }) {
     );
 }
 
+// ── BESÖKSMÅL-PANEL (pågående resa) ──────────────────────
+function SightsPanel({ trip, onClose }) {
+    const [activeDest, setActiveDest] = useState(0);
+
+    const destinations = React.useMemo(() => {
+        try {
+            const parsed = JSON.parse(trip.plan_data || '[]');
+            return parsed.filter(d => d.name || d.sights?.length > 0 || d.mapQuery);
+        } catch { return []; }
+    }, [trip.plan_data]);
+
+    if (destinations.length === 0) return null;
+
+    const dest = destinations[activeDest] || destinations[0];
+    const hasSights = dest.sights && dest.sights.filter(s => s.name).length > 0;
+
+    const mapEmbedUrl = (q) => q ? `https://maps.google.com/maps?q=${encodeURIComponent(q)}&output=embed` : null;
+    const mapDirectUrl = (q) => `https://www.google.com/maps/search/${encodeURIComponent(q)}`;
+
+    return (
+        <div className="planning-panel-overlay" onClick={onClose}>
+            <div className="planning-panel" onClick={e => e.stopPropagation()}>
+                {/* HEADER */}
+                <div className="planning-panel-header">
+                    <div style={{display:'flex', alignItems:'center', gap:'0.6rem', flex:1, minWidth:0}}>
+                        <span style={{fontSize:'1.3rem'}}>📍</span>
+                        <span style={{fontFamily:'Space Mono, monospace', fontWeight:700, fontSize:'1.05rem', color:'white'}}>
+                            {trip.name} — Besöksmål
+                        </span>
+                    </div>
+                    <button className="close-btn" style={{color:'white', background:'rgba(255,255,255,0.15)'}} onClick={onClose}>×</button>
+                </div>
+
+                <div className="planning-panel-body">
+                    {/* DEST TABS */}
+                    {destinations.length > 1 && (
+                        <div style={{display:'flex', gap:'0.5rem', flexWrap:'wrap'}}>
+                            {destinations.map((d, i) => (
+                                <button
+                                    key={d.id || i}
+                                    onClick={() => setActiveDest(i)}
+                                    style={{
+                                        padding:'0.4rem 1rem', borderRadius:'20px', border:'2px solid',
+                                        fontFamily:'DM Sans, sans-serif', fontSize:'0.88rem', fontWeight:600, cursor:'pointer',
+                                        background: i === activeDest ? 'var(--primary)' : 'white',
+                                        color: i === activeDest ? 'white' : 'var(--primary)',
+                                        borderColor: 'var(--primary)', transition:'all 0.15s'
+                                    }}
+                                >
+                                    {i + 1}. {d.name || `Destination ${i+1}`}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* DESTINATION INFO */}
+                    <div style={{display:'flex', flexDirection:'column', gap:'1.25rem'}}>
+                        {/* DATES */}
+                        {(dest.dateFrom || dest.dateTo) && (
+                            <div style={{display:'flex', gap:'1rem', background:'var(--bg)', borderRadius:'8px', padding:'0.75rem 1rem'}}>
+                                {dest.dateFrom && (
+                                    <div>
+                                        <div className="date-label">📅 Ankomst</div>
+                                        <div style={{fontFamily:'Space Mono, monospace', fontWeight:700, fontSize:'0.95rem'}}>{dest.dateFrom}</div>
+                                    </div>
+                                )}
+                                {dest.dateFrom && dest.dateTo && <div style={{color:'var(--border)', alignSelf:'center', fontSize:'1.2rem'}}>→</div>}
+                                {dest.dateTo && (
+                                    <div>
+                                        <div className="date-label">✈️ Avresa</div>
+                                        <div style={{fontFamily:'Space Mono, monospace', fontWeight:700, fontSize:'0.95rem'}}>{dest.dateTo}</div>
+                                    </div>
+                                )}
+                                {dest.dateFrom && dest.dateTo && new Date(dest.dateTo) > new Date(dest.dateFrom) && (
+                                    <div style={{marginLeft:'auto', alignSelf:'center', fontSize:'0.85rem', color:'var(--text-muted)', fontWeight:600}}>
+                                        {Math.round((new Date(dest.dateTo) - new Date(dest.dateFrom)) / 86400000)} nätter
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* MAP */}
+                        {dest.mapQuery && (
+                            <div>
+                                <span className="section-label">🗺 Karta — {dest.mapQuery}</span>
+                                <div className="map-iframe-wrap">
+                                    <iframe
+                                        src={mapEmbedUrl(dest.mapQuery)}
+                                        allowFullScreen=""
+                                        loading="lazy"
+                                        referrerPolicy="no-referrer-when-downgrade"
+                                        title={`Karta: ${dest.mapQuery}`}
+                                    />
+                                    <a className="map-open-btn" href={mapDirectUrl(dest.mapQuery)} target="_blank" rel="noreferrer">
+                                        🗺 Öppna i Google Maps
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* SIGHTS */}
+                        {hasSights && (
+                            <div>
+                                <span className="section-label">📍 Besöksmål</span>
+                                <div className="sights-list">
+                                    {dest.sights.filter(s => s.name).map((sight, i) => (
+                                        <div key={sight.id || i} style={{
+                                            background:'white', border:'1.5px solid var(--border)',
+                                            borderRadius:'10px', padding:'0.9rem 1rem',
+                                            display:'flex', flexDirection:'column', gap:'0.5rem'
+                                        }}>
+                                            <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'0.5rem'}}>
+                                                <div style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                                                    <span style={{fontSize:'1.1rem'}}>📍</span>
+                                                    <span style={{fontWeight:700, fontSize:'0.95rem'}}>{sight.name}</span>
+                                                </div>
+                                                {sight.link && (
+                                                    <a
+                                                        href={sight.link.startsWith('http') ? sight.link : 'https://'+sight.link}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        style={{
+                                                            display:'inline-flex', alignItems:'center', gap:'0.3rem',
+                                                            background:'var(--primary)', color:'white', textDecoration:'none',
+                                                            padding:'0.3rem 0.75rem', borderRadius:'6px', fontSize:'0.8rem', fontWeight:600,
+                                                            flexShrink:0, transition:'background 0.15s'
+                                                        }}
+                                                    >
+                                                        ↗ Öppna länk
+                                                    </a>
+                                                )}
+                                            </div>
+                                            {sight.note && (
+                                                <div style={{
+                                                    fontSize:'0.85rem', color:'var(--text-muted)',
+                                                    background:'var(--bg)', borderRadius:'6px',
+                                                    padding:'0.5rem 0.75rem', lineHeight:'1.5'
+                                                }}>
+                                                    {sight.note}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {!hasSights && !dest.mapQuery && (
+                            <div style={{textAlign:'center', padding:'2rem', color:'var(--text-muted)'}}>
+                                Inga besöksmål eller karta planlagda för denna destination.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── RESAKORT ─────────────────────────────────────────────
 function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip }) {
     const [showNewTrip, setShowNewTrip] = useState(false);
     const [newTripName, setNewTripName] = useState('');
     const [newTripBudget, setNewTripBudget] = useState('');
+    const [sightsPanelTrip, setSightsPanelTrip] = useState(null);
 
     const handleAddTrip = async (e) => {
         e.preventDefault();
@@ -500,16 +660,28 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
         return getTripIcons[idx] || '✈️';
     };
 
+    const hasPlanData = (trip) => {
+        try {
+            const d = JSON.parse(trip.plan_data || '[]');
+            return d.some(dest => dest.name || dest.mapQuery || (dest.sights && dest.sights.some(s => s.name)));
+        } catch { return false; }
+    };
+
     // Only show active (non-completed) trips
     const activeTrips = trips.filter(t => !t.is_completed);
 
     return (
         <div>
+            {sightsPanelTrip && (
+                <SightsPanel trip={sightsPanelTrip} onClose={() => setSightsPanelTrip(null)} />
+            )}
+
             <div className="trip-cards-grid">
                 {activeTrips.map(trip => {
                     const count = allExpenses.filter(e => e.trip_id === trip.id).length;
                     const total = getTripTotal(trip.id);
                     const hasBudget = trip.budget && trip.budget > 0;
+                    const hasPlanned = hasPlanData(trip);
                     return (
                         <div
                             key={trip.id}
@@ -518,8 +690,27 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
                         >
                             <div className="trip-card-icon">{getTripIcon(trip.id)}</div>
                             <div className="trip-card-name">{trip.name}</div>
-                            <div className="trip-card-meta">{count} {count === 1 ? 'utgift' : 'utgifter'}{hasBudget ? ` · Budget: ${trip.budget.toFixed(0)} kr` : ''}</div>
+                            <div className="trip-card-meta">{count} {count === 1 ? 'utgift' : 'utgifter'}{hasBudget ? ` · Budget: ${Number(trip.budget).toFixed(0)} kr` : ''}</div>
                             {hasBudget && <BudgetBar budget={trip.budget} spent={total} />}
+                            {hasPlanned && (
+                                <button
+                                    style={{
+                                        alignSelf:'flex-start', marginTop:'0.25rem',
+                                        background:'var(--bg)', border:'1.5px solid var(--primary-light)',
+                                        borderRadius:'20px', padding:'0.25rem 0.75rem',
+                                        fontSize:'0.78rem', fontWeight:600, color:'var(--primary)',
+                                        cursor:'pointer', fontFamily:'DM Sans, sans-serif',
+                                        display:'flex', alignItems:'center', gap:'0.3rem',
+                                        transition:'all 0.15s'
+                                    }}
+                                    onClick={e => { e.stopPropagation(); setSightsPanelTrip(trip); }}
+                                    onMouseOver={e => e.currentTarget.style.background='#e8f5e9'}
+                                    onMouseOut={e => e.currentTarget.style.background='var(--bg)'}
+                                    title="Visa planerade besöksmål"
+                                >
+                                    📍 Besöksmål
+                                </button>
+                            )}
                             <div className="trip-card-footer">
                                 <span className="trip-card-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</span>
                                 <div style={{display:'flex', gap:'0.3rem'}}>
