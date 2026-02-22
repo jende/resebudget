@@ -36,13 +36,27 @@
         }
         .logo { font-family: 'Space Mono', monospace; font-size: 1.8rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 0.5rem; }
         .user-info { display: flex; align-items: center; gap: 1rem; }
-        .user-badge { background: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem; font-weight: 500; }
-        .admin-badge { background: var(--accent); }
+        .user-badge {
+            background: var(--primary); color: white; padding: 0.5rem 1rem;
+            border-radius: 20px; font-size: 0.9rem; font-weight: 500;
+            cursor: default;
+        }
+        .user-badge.admin-badge {
+            background: var(--accent);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        .user-badge.admin-badge:hover {
+            background: #e55a2b;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(255,107,53,0.35);
+        }
 
         .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover:not(:disabled) { background: var(--primary-light); transform: translateY(-2px); }
+        .btn-primary:hover:not(:disabled) { background: #3a7a3b; transform: translateY(-2px); }
         .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); }
         .btn-secondary:hover:not(:disabled) { background: var(--primary); color: white; }
         .btn-danger { background: var(--error); color: white; }
@@ -61,10 +75,24 @@
         .form-input:focus { outline: none; border-color: var(--primary); }
         .form-select { width: 100%; padding: 0.875rem; border: 2px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 1rem; background: white; cursor: pointer; }
 
-        .tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 2px solid var(--border); }
-        .tab { padding: 1rem 2rem; background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; margin-bottom: -2px; }
-        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
-        .tab:hover { color: var(--primary); }
+        /* TABS */
+        .tabs {
+            display: flex; gap: 0; margin-bottom: 2rem;
+            background: white; border-radius: 12px; padding: 0.4rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.07); border: 1px solid var(--border);
+            width: fit-content;
+        }
+        .tab {
+            padding: 0.75rem 1.75rem; background: none; border: none;
+            font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 500;
+            color: var(--text-muted); cursor: pointer; border-radius: 8px;
+            transition: all 0.2s; position: relative; white-space: nowrap;
+        }
+        .tab.active {
+            background: var(--primary); color: white;
+            box-shadow: 0 2px 8px rgba(44,95,45,0.3);
+        }
+        .tab:not(.active):hover { color: var(--primary); background: #f0f7f0; }
 
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
         .card { background: var(--card); padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 1px solid var(--border); }
@@ -74,12 +102,61 @@
         .stat-value { font-family: 'Space Mono', monospace; font-size: 2.5rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem; }
         .stat-label { color: var(--text-muted); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
 
-        /* TRIP LIST */
-        .trip-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.8rem; border-radius: 8px; border: 1px solid transparent; transition: all 0.15s; cursor: pointer; }
-        .trip-row:hover { background: var(--bg); border-color: var(--border); }
-        .trip-row.selected { background: #f0f7f0; border-color: var(--primary-light); }
-        .trip-row-name { flex: 1; font-weight: 500; font-size: 1rem; }
-        .trip-row-count { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+        /* TRIP CARDS */
+        .trip-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+        .trip-card {
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            padding: 1.25rem 1.25rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .trip-card:hover {
+            border-color: var(--primary-light);
+            box-shadow: 0 4px 16px rgba(44,95,45,0.12);
+            transform: translateY(-2px);
+        }
+        .trip-card.selected {
+            border-color: var(--primary);
+            background: #f0f7f0;
+            box-shadow: 0 4px 16px rgba(44,95,45,0.18);
+        }
+        .trip-card-icon { font-size: 2rem; margin-bottom: 0.25rem; }
+        .trip-card-name { font-weight: 700; font-size: 1.05rem; color: var(--text); line-height: 1.3; }
+        .trip-card-meta { font-size: 0.8rem; color: var(--text-muted); }
+        .trip-card-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border);
+        }
+        .trip-card-total { font-family: 'Space Mono', monospace; font-size: 0.95rem; font-weight: 700; color: var(--primary); }
+        .trip-card-del {
+            background: none; border: none; cursor: pointer;
+            color: var(--text-muted); font-size: 1rem; padding: 0.25rem;
+            border-radius: 6px; transition: all 0.15s; line-height: 1;
+        }
+        .trip-card-del:hover { color: var(--error); background: #ffebee; }
+        .trip-card-new {
+            border: 2px dashed var(--border);
+            background: transparent;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 0.5rem; color: var(--text-muted); min-height: 130px;
+            font-size: 0.95rem; font-weight: 500;
+        }
+        .trip-card-new:hover {
+            border-color: var(--primary-light); color: var(--primary);
+            background: #f9fff9; transform: translateY(-2px);
+        }
+        .trip-card-new .plus-icon { font-size: 1.8rem; color: var(--primary-light); }
 
         /* EXPENSE LIST */
         .expense-list { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -112,6 +189,19 @@
         .emoji-btn:hover { border-color: var(--primary); }
         .emoji-btn.active { background: var(--primary); border-color: var(--primary); }
 
+        /* DAY BREAKDOWN */
+        .day-breakdown { margin-top: 2rem; }
+        .day-group { margin-bottom: 1.25rem; }
+        .day-group-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.6rem 1rem; background: var(--primary); color: white;
+            border-radius: 8px 8px 0 0; font-weight: 600; font-size: 0.95rem;
+        }
+        .day-group-total { font-family: 'Space Mono', monospace; font-size: 0.9rem; }
+        .day-group-items { border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; overflow: hidden; }
+        .day-group-items .expense-item { border-radius: 0; border: none; border-bottom: 1px solid var(--border); }
+        .day-group-items .expense-item:last-child { border-bottom: none; }
+
         /* CONFIRM MODAL */
         .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 1rem; }
         .confirm-box { background: white; border-radius: 12px; padding: 2rem; max-width: 360px; width: 100%; box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
@@ -139,10 +229,68 @@
         .spinner { border: 3px solid var(--border); border-top: 3px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* PLACEHOLDER */
+        .placeholder-box {
+            text-align: center; padding: 5rem 2rem;
+            background: var(--card); border-radius: 16px;
+            border: 2px dashed var(--border);
+        }
+        .placeholder-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.4; }
+        .placeholder-title { font-size: 1.4rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; }
+        .placeholder-desc { color: var(--text-muted); font-size: 0.95rem; max-width: 350px; margin: 0 auto; }
+
+        /* NEW TRIP MODAL */
+        .new-trip-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 150; padding: 1rem; }
+        .new-trip-box { background: white; border-radius: 14px; padding: 2rem; max-width: 420px; width: 100%; box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+        .new-trip-box h3 { font-size: 1.3rem; font-weight: 700; color: var(--primary); margin-bottom: 1.25rem; }
+
+        /* VIEW TOGGLE */
+        .view-toggle { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; align-items: center; }
+        .view-toggle-label { font-size: 0.85rem; color: var(--text-muted); margin-right: 0.25rem; }
+        .toggle-btn { padding: 0.4rem 0.9rem; border-radius: 20px; border: 1.5px solid var(--border); background: white; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
+        .toggle-btn.active { background: var(--primary); border-color: var(--primary); color: white; font-weight: 600; }
+
+        /* BUDGET BAR */
+        .budget-bar-wrap { margin-top: 0.5rem; }
+        .budget-bar-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+        .budget-bar-fill { height: 100%; border-radius: 99px; transition: width 0.4s, background 0.4s; }
+        .budget-bar-fill.ok { background: var(--success); }
+        .budget-bar-fill.warning { background: var(--warning); }
+        .budget-bar-fill.danger { background: var(--error); }
+        .budget-bar-fill.over { background: var(--error); width: 100% !important; }
+        .budget-labels { display: flex; justify-content: space-between; font-size: 0.72rem; margin-top: 0.3rem; color: var(--text-muted); font-family: 'Space Mono', monospace; }
+        .budget-remaining { font-weight: 700; }
+        .budget-remaining.danger { color: var(--error); }
+
+        /* COMPLETED TRIP CARD */
+        .trip-card.completed {
+            opacity: 0.85;
+            background: #fafafa;
+        }
+        .trip-card.completed .trip-card-name { color: var(--text-muted); }
+        .completed-badge {
+            display: inline-block; font-size: 0.7rem; font-weight: 700;
+            background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7;
+            border-radius: 20px; padding: 0.1rem 0.5rem; margin-top: 0.2rem;
+            letter-spacing: 0.03em;
+        }
+
+        /* AVSLUTADE RESOR VIEW */
+        .completed-trip-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 14px; padding: 1.5rem;
+            display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .completed-trip-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .completed-trip-name { font-weight: 700; font-size: 1.1rem; }
+        .completed-trip-stats { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.875rem; color: var(--text-muted); }
+        .completed-trip-stat-val { font-family: 'Space Mono', monospace; font-weight: 700; color: var(--text); font-size: 1rem; }
+
         @media (max-width: 768px) {
             .quick-add-grid { grid-template-columns: 1fr; }
             .header { flex-direction: column; gap: 1rem; text-align: center; }
             .expense-item { grid-template-columns: auto 1fr auto; }
+            .trip-cards-grid { grid-template-columns: 1fr 1fr; }
         }
     </style>
 </head>
@@ -215,9 +363,11 @@ function CategoryManager({ categories, onAdd, onDelete }) {
                 {categories.map(cat => (
                     <span key={cat.id} className="cat-chip">
                         {cat.icon} {cat.name}
-                        {cat.id.startsWith('custom_') && (
-                            <button className="cat-chip-del" onClick={() => onDelete(cat.id)} title="Ta bort">×</button>
-                        )}
+                        <button
+                            className="cat-chip-del"
+                            onClick={() => onDelete(cat.id)}
+                            title="Ta bort kategori"
+                        >×</button>
                     </span>
                 ))}
             </div>
@@ -243,6 +393,209 @@ function CategoryManager({ categories, onAdd, onDelete }) {
     );
 }
 
+// ── BUDGETBAR ─────────────────────────────────────────────
+function BudgetBar({ budget, spent }) {
+    if (!budget || budget <= 0) return null;
+    const remaining = budget - spent;
+    const pct = Math.min((spent / budget) * 100, 100);
+    const remainingPct = remaining / budget; // can be negative
+    const isOver = spent > budget;
+    const isDanger = !isOver && remainingPct <= 0.25;
+    const isWarning = !isOver && !isDanger && remainingPct <= 0.5;
+    const fillClass = isOver ? 'over' : isDanger ? 'danger' : isWarning ? 'warning' : 'ok';
+
+    return (
+        <div className="budget-bar-wrap">
+            <div className="budget-bar-track">
+                <div className="budget-bar-fill" style={{width: isOver ? '100%' : `${pct}%`}} className={`budget-bar-fill ${fillClass}`}></div>
+            </div>
+            <div className="budget-labels">
+                <span>{isOver ? '⚠️ Överskriden' : `${((1 - pct/100) * 100).toFixed(0)}% kvar`}</span>
+                <span className={`budget-remaining ${isDanger || isOver ? 'danger' : ''}`}>
+                    {isOver ? `-${Math.abs(remaining).toFixed(0)} kr` : `${remaining.toFixed(0)} kr kvar`}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+// ── RESAKORT ─────────────────────────────────────────────
+function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip }) {
+    const [showNewTrip, setShowNewTrip] = useState(false);
+    const [newTripName, setNewTripName] = useState('');
+    const [newTripBudget, setNewTripBudget] = useState('');
+
+    const handleAddTrip = async (e) => {
+        e.preventDefault();
+        if (!newTripName.trim()) return;
+        await onAddTrip({
+            name: newTripName.trim(),
+            budget: newTripBudget ? parseFloat(newTripBudget) : null,
+            is_completed: false,
+            created_at: new Date().toISOString()
+        });
+        setNewTripName('');
+        setNewTripBudget('');
+        setShowNewTrip(false);
+    };
+
+    const getTripTotal = (tripId) => {
+        return allExpenses
+            .filter(e => e.trip_id === tripId)
+            .reduce((sum, e) => sum + e.amount * e.exchange_rate, 0);
+    };
+
+    const getTripIcons = ['✈️','🌍','🏝️','🗺️','🚀','⛵','🏔️','🎒'];
+    const getTripIcon = (tripId) => {
+        const idx = parseInt(String(tripId).replace(/\D/g, '').slice(-1)) % getTripIcons.length;
+        return getTripIcons[idx] || '✈️';
+    };
+
+    // Only show active (non-completed) trips
+    const activeTrips = trips.filter(t => !t.is_completed);
+
+    return (
+        <div>
+            <div className="trip-cards-grid">
+                {activeTrips.map(trip => {
+                    const count = allExpenses.filter(e => e.trip_id === trip.id).length;
+                    const total = getTripTotal(trip.id);
+                    const hasBudget = trip.budget && trip.budget > 0;
+                    return (
+                        <div
+                            key={trip.id}
+                            className={`trip-card ${selectedTrip === trip.id ? 'selected' : ''}`}
+                            onClick={() => onSelectTrip(selectedTrip === trip.id ? null : trip.id)}
+                        >
+                            <div className="trip-card-icon">{getTripIcon(trip.id)}</div>
+                            <div className="trip-card-name">{trip.name}</div>
+                            <div className="trip-card-meta">{count} {count === 1 ? 'utgift' : 'utgifter'}{hasBudget ? ` · Budget: ${trip.budget.toFixed(0)} kr` : ''}</div>
+                            {hasBudget && <BudgetBar budget={trip.budget} spent={total} />}
+                            <div className="trip-card-footer">
+                                <span className="trip-card-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</span>
+                                <div style={{display:'flex', gap:'0.3rem'}}>
+                                    <button
+                                        className="trip-card-del"
+                                        title="Avsluta resa"
+                                        style={{fontSize:'1rem'}}
+                                        onClick={e => { e.stopPropagation(); onCompleteTrip(trip.id, trip.name); }}
+                                    >✅</button>
+                                    <button
+                                        className="trip-card-del"
+                                        title="Ta bort resa"
+                                        onClick={e => { e.stopPropagation(); onDeleteTrip(trip.id, trip.name); }}
+                                    >🗑</button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+
+                {/* Ny resa-kort */}
+                <div className="trip-card trip-card-new" onClick={() => setShowNewTrip(true)}>
+                    <span className="plus-icon">+</span>
+                    <span>Ny resa</span>
+                </div>
+            </div>
+
+            {showNewTrip && (
+                <div className="new-trip-overlay" onClick={() => setShowNewTrip(false)}>
+                    <div className="new-trip-box" onClick={e => e.stopPropagation()}>
+                        <h3>✈️ Skapa ny resa</h3>
+                        <form onSubmit={handleAddTrip}>
+                            <div className="form-group">
+                                <label className="form-label">Resans namn</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="t.ex. Thailand 2026"
+                                    value={newTripName}
+                                    onChange={e => setNewTripName(e.target.value)}
+                                    autoFocus
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Budget (kr) <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    className="form-input"
+                                    placeholder="t.ex. 20000"
+                                    value={newTripBudget}
+                                    onChange={e => setNewTripBudget(e.target.value)}
+                                />
+                            </div>
+                            <div style={{display:'flex', gap:'0.75rem'}}>
+                                <button type="button" className="btn btn-secondary" style={{flex:1}} onClick={() => setShowNewTrip(false)}>Avbryt</button>
+                                <button type="submit" className="btn btn-primary" style={{flex:1}} disabled={!newTripName.trim()}>Skapa resa</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── DAGÖVERSIKT ──────────────────────────────────────────
+function DayBreakdown({ expenses, categories, users }) {
+    const getCatInfo = (id) => categories.find(c => c.id === id) || { icon: '📌', name: id };
+    const getUserName = (uid) => users.find(u => u.id === uid)?.name || 'Okänd';
+
+    const grouped = expenses.reduce((acc, e) => {
+        const day = new Date(e.date).toLocaleDateString('sv-SE');
+        if (!acc[day]) acc[day] = [];
+        acc[day].push(e);
+        return acc;
+    }, {});
+
+    const sortedDays = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+
+    if (sortedDays.length === 0) {
+        return <p style={{textAlign:'center', color:'var(--text-muted)', padding:'2rem'}}>Inga utgifter att visa</p>;
+    }
+
+    return (
+        <div className="day-breakdown">
+            {sortedDays.map(day => {
+                const dayExpenses = grouped[day];
+                const dayTotal = dayExpenses.reduce((s, e) => s + e.amount * e.exchange_rate, 0);
+                return (
+                    <div key={day} className="day-group">
+                        <div className="day-group-header">
+                            <span>{day}</span>
+                            <span className="day-group-total">{dayTotal.toFixed(0)} kr</span>
+                        </div>
+                        <div className="day-group-items">
+                            {dayExpenses.map(expense => {
+                                const cat = getCatInfo(expense.category);
+                                return (
+                                    <div key={expense.id} className="expense-item">
+                                        <div className="expense-category">{cat.icon}</div>
+                                        <div className="expense-details">
+                                            <div className="expense-description">{expense.description}</div>
+                                            <div className="expense-meta">
+                                                {cat.name} · {getUserName(expense.added_by)}
+                                            </div>
+                                        </div>
+                                        <div className="expense-amount">
+                                            <div className="expense-price">{(expense.amount * expense.exchange_rate).toFixed(0)} kr</div>
+                                            <div className="expense-currency">({expense.amount.toFixed(0)} {expense.currency})</div>
+                                        </div>
+                                        <div style={{width:'32px'}}></div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 // ── HUVUDAPP ─────────────────────────────────────────────
 function App() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -254,6 +607,7 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+    const [showAdmin, setShowAdmin] = useState(false);
 
     useEffect(() => {
         if (currentUser) {
@@ -293,6 +647,14 @@ function App() {
         if (!error && data) { setTrips([data[0], ...trips]); setSelectedTrip(data[0].id); }
     };
 
+    const handleCompleteTrip = async (id) => {
+        const { error } = await supabase.from('trips').update({ is_completed: true }).eq('id', id);
+        if (!error) {
+            setTrips(trips.map(t => t.id === id ? { ...t, is_completed: true } : t));
+            if (selectedTrip === id) setSelectedTrip(null);
+        }
+    };
+
     const handleDeleteTrip = async (id) => {
         await supabase.from('expenses').delete().eq('trip_id', id);
         const { error } = await supabase.from('trips').delete().eq('id', id);
@@ -318,15 +680,53 @@ function App() {
 
     return (
         <div className="app-container">
-            <Header user={currentUser} onLogout={() => setCurrentUser(null)} />
+            <Header
+                user={currentUser}
+                onLogout={() => setCurrentUser(null)}
+                onAdminClick={() => setShowAdmin(true)}
+            />
             {error && <div className="alert alert-error">{error}</div>}
+
+            {showAdmin && currentUser.is_admin && (
+                <div className="modal-overlay" onClick={() => setShowAdmin(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'700px'}}>
+                        <div className="modal-header">
+                            <span className="modal-title">⚙️ Admin</span>
+                            <button className="close-btn" onClick={() => setShowAdmin(false)}>×</button>
+                        </div>
+                        <AdminView
+                            users={users}
+                            onAddUser={async (user) => {
+                                const { data, error } = await supabase.from('users').insert([user]).select();
+                                if (!error && data) setUsers([...users, data[0]]);
+                            }}
+                            onDeleteUser={async (id) => {
+                                const { error } = await supabase.from('users').delete().eq('id', id);
+                                if (!error) setUsers(users.filter(u => u.id !== id));
+                            }}
+                            onResetPassword={async (id, newPassword) => {
+                                const { error } = await supabase.from('users').update({ password: newPassword }).eq('id', id);
+                                if (!error) setUsers(users.map(u => u.id === id ? { ...u, password: newPassword } : u));
+                            }}
+                            onToggleAdmin={async (id, isAdmin) => {
+                                const { error } = await supabase.from('users').update({ is_admin: isAdmin }).eq('id', id);
+                                if (!error) setUsers(users.map(u => u.id === id ? { ...u, is_admin: isAdmin } : u));
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
+
             <div className="main-content">
                 <div className="tabs">
-                    <button className={`tab ${activeTab==='expenses'?'active':''}`} onClick={() => setActiveTab('expenses')}>Utgifter</button>
-                    {currentUser.is_admin && (
-                        <button className={`tab ${activeTab==='admin'?'active':''}`} onClick={() => setActiveTab('admin')}>Admin</button>
-                    )}
+                    <button className={`tab ${activeTab==='planned'?'active':''}`} onClick={() => setActiveTab('planned')}>🗓 Planerade Resor</button>
+                    <button className={`tab ${activeTab==='expenses'?'active':''}`} onClick={() => setActiveTab('expenses')}>💸 Utgifter</button>
+                    <button className={`tab ${activeTab==='history'?'active':''}`} onClick={() => setActiveTab('history')}>📂 Avslutade Resor</button>
                 </div>
+
+                {activeTab === 'planned' && (
+                    <PlannedTripsView />
+                )}
 
                 {activeTab === 'expenses' && (
                     <ExpensesView
@@ -342,32 +742,99 @@ function App() {
                         onDeleteCategory={id => saveCategories(categories.filter(c => c.id !== id))}
                         onAddTrip={handleAddTrip}
                         onDeleteTrip={handleDeleteTrip}
+                        onCompleteTrip={handleCompleteTrip}
                         onAddExpense={handleAddExpense}
                         onDeleteExpense={handleDeleteExpense}
                     />
                 )}
 
-                {activeTab === 'admin' && currentUser.is_admin && (
-                    <AdminView
-                        users={users}
-                        onAddUser={async (user) => {
-                            const { data, error } = await supabase.from('users').insert([user]).select();
-                            if (!error && data) setUsers([...users, data[0]]);
-                        }}
-                        onDeleteUser={async (id) => {
-                            const { error } = await supabase.from('users').delete().eq('id', id);
-                            if (!error) setUsers(users.filter(u => u.id !== id));
-                        }}
-                        onResetPassword={async (id, newPassword) => {
-                            const { error } = await supabase.from('users').update({ password: newPassword }).eq('id', id);
-                            if (!error) setUsers(users.map(u => u.id === id ? { ...u, password: newPassword } : u));
-                        }}
-                        onToggleAdmin={async (id, isAdmin) => {
-                            const { error } = await supabase.from('users').update({ is_admin: isAdmin }).eq('id', id);
-                            if (!error) setUsers(users.map(u => u.id === id ? { ...u, is_admin: isAdmin } : u));
-                        }}
+                {activeTab === 'history' && (
+                    <CompletedTripsView
+                        trips={trips.filter(t => t.is_completed)}
+                        allExpenses={expenses}
+                        onDeleteTrip={handleDeleteTrip}
                     />
                 )}
+            </div>
+        </div>
+    );
+}
+
+// ── PLANERADE RESOR (PLACEHOLDER) ────────────────────────
+function PlannedTripsView() {
+    return (
+        <div className="placeholder-box">
+            <div className="placeholder-icon">🗓️</div>
+            <div className="placeholder-title">Planerade Resor</div>
+            <div className="placeholder-desc">Här kommer du kunna planera och organisera kommande resor. Funktionen är under uppbyggnad.</div>
+        </div>
+    );
+}
+
+// ── AVSLUTADE RESOR ───────────────────────────────────────
+function CompletedTripsView({ trips, allExpenses, onDeleteTrip }) {
+    const [confirm, setConfirm] = useState(null);
+
+    const getTripTotal = (tripId) =>
+        allExpenses.filter(e => e.trip_id === tripId).reduce((sum, e) => sum + e.amount * e.exchange_rate, 0);
+
+    const getTripIcons = ['✈️','🌍','🏝️','🗺️','🚀','⛵','🏔️','🎒'];
+    const getTripIcon = (tripId) => {
+        const idx = parseInt(String(tripId).replace(/\D/g, '').slice(-1)) % getTripIcons.length;
+        return getTripIcons[idx] || '✈️';
+    };
+
+    if (trips.length === 0) {
+        return (
+            <div className="placeholder-box">
+                <div className="placeholder-icon">📂</div>
+                <div className="placeholder-title">Inga avslutade resor</div>
+                <div className="placeholder-desc">Resor du avslutar från Utgifter-fliken dyker upp här.</div>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            {confirm && (
+                <ConfirmDialog
+                    title="Ta bort avslutad resa?"
+                    message={`"${confirm.name}" och alla dess utgifter raderas permanent. Det går inte att ångra.`}
+                    onConfirm={() => { onDeleteTrip(confirm.id); setConfirm(null); }}
+                    onCancel={() => setConfirm(null)}
+                />
+            )}
+            <div className="trip-cards-grid" style={{marginBottom:'2rem'}}>
+                {trips.map(trip => {
+                    const count = allExpenses.filter(e => e.trip_id === trip.id).length;
+                    const total = getTripTotal(trip.id);
+                    const hasBudget = trip.budget && trip.budget > 0;
+                    const underBudget = hasBudget && total <= trip.budget;
+                    return (
+                        <div key={trip.id} className="trip-card completed" style={{cursor:'default'}}>
+                            <div className="trip-card-icon">{getTripIcon(trip.id)}</div>
+                            <div className="trip-card-name">{trip.name}</div>
+                            <span className="completed-badge">✓ Avslutad</span>
+                            <div className="trip-card-meta">{count} {count === 1 ? 'utgift' : 'utgifter'}{hasBudget ? ` · Budget: ${trip.budget.toFixed(0)} kr` : ''}</div>
+                            {hasBudget && <BudgetBar budget={trip.budget} spent={total} />}
+                            {hasBudget && (
+                                <div style={{fontSize:'0.8rem', color: underBudget ? 'var(--success)' : 'var(--error)', fontWeight:600}}>
+                                    {underBudget
+                                        ? `✓ Höll budgeten! Sparade ${(trip.budget - total).toFixed(0)} kr`
+                                        : `⚠️ Överskred budgeten med ${(total - trip.budget).toFixed(0)} kr`}
+                                </div>
+                            )}
+                            <div className="trip-card-footer">
+                                <span className="trip-card-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</span>
+                                <button
+                                    className="trip-card-del"
+                                    title="Ta bort resa"
+                                    onClick={() => setConfirm({ id: trip.id, name: trip.name })}
+                                >🗑</button>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
@@ -413,14 +880,18 @@ function LoginForm({ onLogin }) {
 }
 
 // ── HEADER ────────────────────────────────────────────────
-function Header({ user, onLogout }) {
+function Header({ user, onLogout, onAdminClick }) {
     return (
         <header className="header">
             <div className="logo">✈️ Resebudget</div>
             <div className="user-info">
-                <span className={`user-badge ${user.is_admin ? 'admin-badge' : ''}`}>
-                    {user.name} {user.is_admin && '(Admin)'}
-                </span>
+                {user.is_admin ? (
+                    <span className="user-badge admin-badge" onClick={onAdminClick} title="Öppna adminpanelen">
+                        {user.name} (Admin) ⚙️
+                    </span>
+                ) : (
+                    <span className="user-badge">{user.name}</span>
+                )}
                 <button className="btn btn-secondary btn-small" onClick={onLogout}>Logga ut</button>
             </div>
         </header>
@@ -428,17 +899,16 @@ function Header({ user, onLogout }) {
 }
 
 // ── UTGIFTSVY ─────────────────────────────────────────────
-function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onAddExpense, onDeleteExpense }) {
+function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onCompleteTrip, onAddExpense, onDeleteExpense }) {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [currency, setCurrency] = useState('SEK');
     const [category, setCategory] = useState('food');
     const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
     const [submitting, setSubmitting] = useState(false);
-    const [showNewTrip, setShowNewTrip] = useState(false);
-    const [newTripName, setNewTripName] = useState('');
     const [showCatManager, setShowCatManager] = useState(false);
-    const [confirm, setConfirm] = useState(null); // { type: 'trip'|'expense', id, name }
+    const [confirm, setConfirm] = useState(null);
+    const [expenseView, setExpenseView] = useState('list'); // 'list' | 'day'
 
     const handleAddExpense = async (e) => {
         e.preventDefault();
@@ -451,18 +921,14 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
         setSubmitting(false);
     };
 
-    const handleAddTrip = async (e) => {
-        e.preventDefault();
-        if (!newTripName) return;
-        await onAddTrip({ name: newTripName, created_at: new Date().toISOString() });
-        setNewTripName(''); setShowNewTrip(false);
+    const handleDeleteTripConfirm = (id, name) => {
+        setConfirm({ type: 'trip', id, name });
     };
 
     const getCatInfo = (id) => categories.find(c => c.id === id) || { icon: '📌', name: id };
     const getUserName = (uid) => users.find(u => u.id === uid)?.name || 'Okänd';
 
     const totalSEK = expenses.reduce((sum, e) => sum + (e.amount * e.exchange_rate), 0);
-    const perPerson = users.length > 0 ? totalSEK / users.length : 0;
     const categoryTotals = categories.map(cat => ({
         ...cat,
         total: expenses.filter(e => e.category === cat.id).reduce((s, e) => s + e.amount * e.exchange_rate, 0)
@@ -470,15 +936,18 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
 
     return (
         <div>
-            {/* BEKRÄFTELSEDIALOG */}
             {confirm && (
                 <ConfirmDialog
-                    title={confirm.type === 'trip' ? 'Ta bort resa?' : 'Ta bort utgift?'}
+                    title={confirm.type === 'trip' ? 'Ta bort resa?' : confirm.type === 'complete' ? 'Avsluta resa?' : 'Ta bort utgift?'}
                     message={confirm.type === 'trip'
                         ? `"${confirm.name}" och alla dess utgifter raderas permanent. Det går inte att ångra.`
+                        : confirm.type === 'complete'
+                        ? `"${confirm.name}" markeras som avslutad och flyttas till Avslutade Resor. Du kan fortfarande se den där.`
                         : `"${confirm.name}" raderas permanent.`}
+                    confirmLabel={confirm.type === 'complete' ? 'Avsluta resa' : 'Ta bort'}
                     onConfirm={() => {
                         if (confirm.type === 'trip') onDeleteTrip(confirm.id);
+                        else if (confirm.type === 'complete') onCompleteTrip(confirm.id);
                         else onDeleteExpense(confirm.id);
                         setConfirm(null);
                     }}
@@ -486,52 +955,20 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                 />
             )}
 
-            {/* RESOR */}
-            <div className="card" style={{marginBottom:'2rem'}}>
-                <div className="card-header">
-                    <span className="card-title" style={{fontSize:'1rem'}}>Dina resor</span>
-                    <button className="btn btn-primary btn-small" onClick={() => setShowNewTrip(!showNewTrip)}>
-                        {showNewTrip ? '× Avbryt' : '+ Ny resa'}
-                    </button>
-                </div>
-
-                {showNewTrip && (
-                    <form onSubmit={handleAddTrip} style={{marginBottom:'1rem', display:'flex', gap:'0.75rem'}}>
-                        <input type="text" className="form-input" placeholder="Resans namn (t.ex. Thailand 2026)" value={newTripName} onChange={e => setNewTripName(e.target.value)} required style={{flex:1}} />
-                        <button type="submit" className="btn btn-primary btn-small">Skapa</button>
-                    </form>
-                )}
-
-                {trips.length === 0 ? (
-                    <p style={{color:'var(--text-muted)', fontSize:'0.95rem'}}>Inga resor ännu. Skapa din första resa ovan.</p>
-                ) : (
-                    <div style={{display:'flex', flexDirection:'column', gap:'0.3rem'}}>
-                        {trips.map(trip => {
-                            const count = allExpenses.filter(e => e.trip_id === trip.id).length;
-                            return (
-                                <div
-                                    key={trip.id}
-                                    className={`trip-row ${selectedTrip === trip.id ? 'selected' : ''}`}
-                                    onClick={() => onSelectTrip(trip.id)}
-                                >
-                                    <span style={{fontSize:'1rem'}}>{selectedTrip === trip.id ? '▶' : '○'}</span>
-                                    <span className="trip-row-name">{trip.name}</span>
-                                    <span className="trip-row-count">{count} {count === 1 ? 'utgift' : 'utgifter'}</span>
-                                    <button
-                                        className="btn btn-danger btn-icon btn-small"
-                                        title="Ta bort resa"
-                                        onClick={e => { e.stopPropagation(); setConfirm({ type:'trip', id:trip.id, name:trip.name }); }}
-                                    >🗑</button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
+            {/* RESAKORT */}
+            <TripCards
+                trips={trips}
+                selectedTrip={selectedTrip}
+                onSelectTrip={onSelectTrip}
+                allExpenses={allExpenses}
+                onAddTrip={onAddTrip}
+                onDeleteTrip={handleDeleteTripConfirm}
+                onCompleteTrip={(id, name) => setConfirm({ type:'complete', id, name })}
+            />
 
             {!selectedTrip ? (
                 <div className="card" style={{textAlign:'center', padding:'3rem'}}>
-                    <p style={{color:'var(--text-muted)'}}>Välj en resa för att se och lägga till utgifter</p>
+                    <p style={{color:'var(--text-muted)'}}>Välj en resa ovan för att se och lägga till utgifter</p>
                 </div>
             ) : (
                 <>
@@ -582,15 +1019,11 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                         </div>
                     </form>
 
-                    {/* STATISTIK */}
-                    <div className="grid">
+                    {/* STATISTIK – bara total och antal */}
+                    <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))'}}>
                         <div className="card stat-card">
                             <div className="stat-value">{totalSEK.toFixed(0)} kr</div>
                             <div className="stat-label">Total</div>
-                        </div>
-                        <div className="card stat-card">
-                            <div className="stat-value">{perPerson.toFixed(0)} kr</div>
-                            <div className="stat-label">Per Person</div>
                         </div>
                         <div className="card stat-card">
                             <div className="stat-value">{expenses.length}</div>
@@ -613,12 +1046,22 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                         </div>
                     )}
 
-                    {/* UTGIFTSLISTA */}
+                    {/* UTGIFTSLISTA MED DAGÖVERSIKT */}
                     <div className="card">
-                        <h3 className="card-title" style={{marginBottom:'1rem'}}>Alla utgifter</h3>
+                        <div className="card-header">
+                            <h3 className="card-title">Alla utgifter</h3>
+                            {expenses.length > 0 && (
+                                <div className="view-toggle">
+                                    <span className="view-toggle-label">Visa:</span>
+                                    <button className={`toggle-btn ${expenseView==='list'?'active':''}`} onClick={() => setExpenseView('list')}>Lista</button>
+                                    <button className={`toggle-btn ${expenseView==='day'?'active':''}`} onClick={() => setExpenseView('day')}>Per dag</button>
+                                </div>
+                            )}
+                        </div>
+
                         {expenses.length === 0 ? (
                             <p style={{textAlign:'center', color:'var(--text-muted)', padding:'2rem'}}>Inga utgifter ännu</p>
-                        ) : (
+                        ) : expenseView === 'list' ? (
                             <div className="expense-list">
                                 {expenses.map(expense => {
                                     const cat = getCatInfo(expense.category);
@@ -644,6 +1087,8 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                                     );
                                 })}
                             </div>
+                        ) : (
+                            <DayBreakdown expenses={expenses} categories={categories} users={users} />
                         )}
                     </div>
                 </>
@@ -669,14 +1114,14 @@ function AdminView({ users, onAddUser, onDeleteUser, onResetPassword, onToggleAd
 
     return (
         <div>
-            <div className="card">
-                <div className="card-header">
-                    <h3 className="card-title">Användare</h3>
+            <div style={{marginBottom:'1.5rem'}}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+                    <h3 style={{fontSize:'1.1rem', fontWeight:700, color:'var(--text)'}}>Användare</h3>
                     <button className="btn btn-primary btn-small" onClick={() => setShowAddUser(!showAddUser)}>+ Lägg till användare</button>
                 </div>
 
                 {showAddUser && (
-                    <form onSubmit={handleAddUser} style={{marginBottom:'2rem', padding:'1rem', background:'var(--bg)', borderRadius:'8px'}}>
+                    <form onSubmit={handleAddUser} style={{marginBottom:'1.5rem', padding:'1rem', background:'var(--bg)', borderRadius:'8px'}}>
                         {[['Namn','name','text'],['Användarnamn','username','text'],['Lösenord','password','password']].map(([label, key, type]) => (
                             <div className="form-group" key={key}>
                                 <label className="form-label">{label}</label>
