@@ -759,6 +759,16 @@ function SightsPanel({ trip, onClose }) {
     );
 }
 
+                {!isOwner && (
+                    <div style={{color:'var(--text-muted)', fontSize:'0.85rem', fontStyle:'italic', borderTop:'1px solid var(--border)', paddingTop:'0.75rem'}}>
+                        Enbart resans ägare kan bjuda in eller ta bort medresenärer.
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 // ── RESAKORT ─────────────────────────────────────────────
 function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip }) {
     const [showNewTrip, setShowNewTrip] = useState(false);
@@ -1491,6 +1501,7 @@ function PlannedTripsView({ trips, onAddTrip, onDeleteTrip, onActivateTrip, onUp
                 />
             )}
 
+
             {editingTrip && (
                 <TripPlannerPanel
                     trip={editingTrip}
@@ -2006,6 +2017,9 @@ function AdminView({ users, onAddUser, onDeleteUser, onResetPassword, onToggleAd
     const [showAddUser, setShowAddUser] = useState(false);
     const [newUser, setNewUser] = useState({ username:'', password:'', name:'', is_admin:false });
     const [submitting, setSubmitting] = useState(false);
+    const [visiblePasswords, setVisiblePasswords] = useState({});
+
+    const togglePassword = (id) => setVisiblePasswords(prev => ({ ...prev, [id]: !prev[id] }));
 
     const handleAddUser = async (e) => {
         e.preventDefault();
@@ -2052,6 +2066,25 @@ function AdminView({ users, onAddUser, onDeleteUser, onResetPassword, onToggleAd
                                 <div>
                                     <div style={{fontWeight:500}}>{user.name}</div>
                                     <div style={{fontSize:'0.875rem', color:'var(--text-muted)'}}>@{user.username}{user.is_admin && ' · Admin'}</div>
+                                    <div style={{display:'flex', alignItems:'center', gap:'0.4rem', marginTop:'0.2rem'}}>
+                                        <span style={{
+                                            fontSize:'0.82rem', fontFamily:'Space Mono, monospace',
+                                            color: visiblePasswords[user.id] ? 'var(--text)' : 'var(--text-muted)',
+                                            letterSpacing: visiblePasswords[user.id] ? 'normal' : '0.15em'
+                                        }}>
+                                            {visiblePasswords[user.id] ? user.password : '••••••••'}
+                                        </span>
+                                        <button
+                                            onClick={() => togglePassword(user.id)}
+                                            style={{
+                                                background:'none', border:'none', cursor:'pointer',
+                                                fontSize:'0.85rem', padding:'0.1rem 0.3rem',
+                                                color:'var(--text-muted)', borderRadius:'4px',
+                                                lineHeight:1, transition:'color 0.15s'
+                                            }}
+                                            title={visiblePasswords[user.id] ? 'Dölj lösenord' : 'Visa lösenord'}
+                                        >{visiblePasswords[user.id] ? '🙈' : '👁'}</button>
+                                    </div>
                                 </div>
                             </div>
                             <div style={{display:'flex', gap:'0.5rem', flexWrap:'wrap'}}>
