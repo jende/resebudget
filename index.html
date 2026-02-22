@@ -336,10 +336,41 @@
         .completed-trip-stat-val { font-family: 'Space Mono', monospace; font-weight: 700; color: var(--text); font-size: 1rem; }
 
         @media (max-width: 768px) {
+            .app-container { padding: 1rem; }
+            .header { flex-direction: column; gap: 0.75rem; text-align: center; }
+            .logo { font-size: 1.4rem; }
+            .tabs { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; }
+            .tab { padding: 0.6rem 1rem; font-size: 0.82rem; white-space: nowrap; }
+            .trip-cards-grid { grid-template-columns: 1fr; gap: 0.9rem; }
+            .quick-add-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+            .quick-add-grid > *:first-child { grid-column: 1 / -1; }
+            .quick-add-grid > button { grid-column: 1 / -1; }
+            .grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+            .stat-value { font-size: 1.6rem; }
+            .stat-card { padding: 1rem; }
+            .expense-item { grid-template-columns: auto 1fr auto auto; gap: 0.5rem; padding: 0.75rem; }
+            .expense-category { width: 36px; height: 36px; font-size: 1.1rem; }
+            .expense-price { font-size: 0.95rem; }
+            .card { padding: 1rem; }
+            .card-header { flex-wrap: wrap; gap: 0.5rem; }
+            .planning-panel { width: 100vw; }
+            .planning-panel-header { padding: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+            .planning-panel-body { padding: 1rem; gap: 1rem; }
+            .panel-save-bar { padding: 0.75rem 1rem; }
+            .dest-body { padding: 0.9rem 1rem; }
+            .dates-row { flex-direction: column; gap: 0.5rem; }
+            .map-iframe-wrap iframe { height: 180px; }
+            .sight-item { padding: 0.6rem 0.75rem; }
+            .view-toggle { flex-wrap: wrap; gap: 0.4rem; }
+            .modal { padding: 1.25rem; }
+            .user-item { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+            .user-item > div:last-child { width: 100%; }
+            .user-item > div:last-child .btn { font-size: 0.78rem; padding: 0.4rem 0.7rem; }
+        }
+        @media (max-width: 480px) {
             .quick-add-grid { grid-template-columns: 1fr; }
-            .header { flex-direction: column; gap: 1rem; text-align: center; }
-            .expense-item { grid-template-columns: auto 1fr auto; }
-            .trip-cards-grid { grid-template-columns: 1fr 1fr; }
+            .grid { grid-template-columns: 1fr; }
+            .trip-card-footer { flex-wrap: wrap; gap: 0.5rem; }
         }
     </style>
 </head>
@@ -468,6 +499,100 @@ function BudgetBar({ budget, spent }) {
     );
 }
 
+// ── SIGHTMAP — kartan per besöksmål med klickbart overlay ─
+function SightMap({ query }) {
+    const [expanded, setExpanded] = useState(false);
+    const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
+    const directUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
+
+    return (
+        <div style={{borderTop:'1px solid var(--border)'}}>
+            {!expanded ? (
+                // Collapsed: clickable thumbnail that opens expanded or Maps
+                <div
+                    style={{position:'relative', cursor:'pointer'}}
+                    onClick={() => setExpanded(true)}
+                >
+                    <iframe
+                        src={embedUrl}
+                        style={{width:'100%', height:'160px', display:'block', border:'none', pointerEvents:'none'}}
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title={`Karta: ${query}`}
+                    />
+                    {/* Overlay with instructions */}
+                    <div style={{
+                        position:'absolute', inset:0,
+                        background:'rgba(0,0,0,0.28)',
+                        display:'flex', alignItems:'center', justifyContent:'center', gap:'0.75rem',
+                        flexWrap:'wrap', padding:'0.5rem'
+                    }}>
+                        <div style={{
+                            background:'white', borderRadius:'8px', padding:'0.4rem 0.9rem',
+                            fontSize:'0.82rem', fontWeight:700, color:'var(--primary)',
+                            display:'flex', alignItems:'center', gap:'0.3rem', boxShadow:'0 2px 8px rgba(0,0,0,0.2)'
+                        }}>
+                            🔍 Förstora karta
+                        </div>
+                        <a
+                            href={directUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                background:'var(--primary)', borderRadius:'8px', padding:'0.4rem 0.9rem',
+                                fontSize:'0.82rem', fontWeight:700, color:'white', textDecoration:'none',
+                                display:'flex', alignItems:'center', gap:'0.3rem', boxShadow:'0 2px 8px rgba(0,0,0,0.2)'
+                            }}
+                        >
+                            🗺 Öppna i Google Maps
+                        </a>
+                    </div>
+                </div>
+            ) : (
+                // Expanded: full interactive map
+                <div style={{position:'relative'}}>
+                    <iframe
+                        src={embedUrl}
+                        style={{width:'100%', height:'300px', display:'block', border:'none'}}
+                        allowFullScreen=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title={`Karta: ${query}`}
+                    />
+                    <div style={{
+                        position:'absolute', bottom:'8px', left:'8px', right:'8px',
+                        display:'flex', gap:'0.5rem', justifyContent:'flex-end'
+                    }}>
+                        <button
+                            onClick={() => setExpanded(false)}
+                            style={{
+                                background:'white', border:'1.5px solid var(--border)', borderRadius:'6px',
+                                padding:'0.3rem 0.7rem', fontSize:'0.78rem', fontWeight:600, cursor:'pointer',
+                                boxShadow:'0 1px 4px rgba(0,0,0,0.1)'
+                            }}
+                        >
+                            ▲ Minimera
+                        </button>
+                        <a
+                            href={directUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                                background:'var(--primary)', border:'none', borderRadius:'6px',
+                                padding:'0.3rem 0.7rem', fontSize:'0.78rem', fontWeight:600, cursor:'pointer',
+                                color:'white', textDecoration:'none', boxShadow:'0 1px 4px rgba(0,0,0,0.1)'
+                            }}
+                        >
+                            🗺 Google Maps
+                        </a>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ── BESÖKSMÅL-PANEL (pågående resa) ──────────────────────
 function SightsPanel({ trip, onClose }) {
     const [activeDest, setActiveDest] = useState(0);
@@ -568,7 +693,7 @@ function SightsPanel({ trip, onClose }) {
                             </div>
                         )}
 
-                        {/* SIGHTS */}
+        {/* SIGHTS */}
                         {hasSights && (
                             <div>
                                 <span className="section-label">📍 Besöksmål</span>
@@ -576,38 +701,45 @@ function SightsPanel({ trip, onClose }) {
                                     {dest.sights.filter(s => s.name).map((sight, i) => (
                                         <div key={sight.id || i} style={{
                                             background:'white', border:'1.5px solid var(--border)',
-                                            borderRadius:'10px', padding:'0.9rem 1rem',
-                                            display:'flex', flexDirection:'column', gap:'0.5rem'
+                                            borderRadius:'10px', overflow:'hidden',
+                                            display:'flex', flexDirection:'column'
                                         }}>
-                                            <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'0.5rem'}}>
-                                                <div style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
-                                                    <span style={{fontSize:'1.1rem'}}>📍</span>
-                                                    <span style={{fontWeight:700, fontSize:'0.95rem'}}>{sight.name}</span>
+                                            {/* SIGHT HEADER */}
+                                            <div style={{padding:'0.9rem 1rem 0.75rem', display:'flex', flexDirection:'column', gap:'0.5rem'}}>
+                                                <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'0.5rem'}}>
+                                                    <div style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                                                        <span style={{fontSize:'1.1rem'}}>📍</span>
+                                                        <span style={{fontWeight:700, fontSize:'0.95rem'}}>{sight.name}</span>
+                                                    </div>
+                                                    {sight.link && (
+                                                        <a
+                                                            href={sight.link.startsWith('http') ? sight.link : 'https://'+sight.link}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            style={{
+                                                                display:'inline-flex', alignItems:'center', gap:'0.3rem',
+                                                                background:'var(--primary)', color:'white', textDecoration:'none',
+                                                                padding:'0.3rem 0.75rem', borderRadius:'6px', fontSize:'0.8rem', fontWeight:600,
+                                                                flexShrink:0, transition:'background 0.15s'
+                                                            }}
+                                                        >
+                                                            ↗ Öppna länk
+                                                        </a>
+                                                    )}
                                                 </div>
-                                                {sight.link && (
-                                                    <a
-                                                        href={sight.link.startsWith('http') ? sight.link : 'https://'+sight.link}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        style={{
-                                                            display:'inline-flex', alignItems:'center', gap:'0.3rem',
-                                                            background:'var(--primary)', color:'white', textDecoration:'none',
-                                                            padding:'0.3rem 0.75rem', borderRadius:'6px', fontSize:'0.8rem', fontWeight:600,
-                                                            flexShrink:0, transition:'background 0.15s'
-                                                        }}
-                                                    >
-                                                        ↗ Öppna länk
-                                                    </a>
+                                                {sight.note && (
+                                                    <div style={{
+                                                        fontSize:'0.85rem', color:'var(--text-muted)',
+                                                        background:'var(--bg)', borderRadius:'6px',
+                                                        padding:'0.5rem 0.75rem', lineHeight:'1.5'
+                                                    }}>
+                                                        {sight.note}
+                                                    </div>
                                                 )}
                                             </div>
-                                            {sight.note && (
-                                                <div style={{
-                                                    fontSize:'0.85rem', color:'var(--text-muted)',
-                                                    background:'var(--bg)', borderRadius:'6px',
-                                                    padding:'0.5rem 0.75rem', lineHeight:'1.5'
-                                                }}>
-                                                    {sight.note}
-                                                </div>
+                                            {/* SIGHT MAP — clickable overlay */}
+                                            {sight.mapQuery && (
+                                                <SightMap query={sight.mapQuery} />
                                             )}
                                         </div>
                                     ))}
@@ -1037,7 +1169,7 @@ function makeDestination() {
     return { id: Date.now() + Math.random(), name: '', dateFrom: '', dateTo: '', mapQuery: '', sights: [] };
 }
 function makeSight() {
-    return { id: Date.now() + Math.random(), name: '', link: '', note: '' };
+    return { id: Date.now() + Math.random(), name: '', link: '', mapQuery: '', note: '' };
 }
 
 // Converts a Google Maps search query to an embed URL
@@ -1210,6 +1342,7 @@ function TripPlannerPanel({ trip, onSave, onClose, onActivate, onDelete }) {
                                             <div className="sights-list">
                                                 {dest.sights.map((sight, sIdx) => (
                                                     <div key={sight.id} className="sight-item">
+                                                        {/* ROW 1: Namn */}
                                                         <div className="sight-row1">
                                                             <span style={{fontSize:'1rem'}}>📍</span>
                                                             <input
@@ -1220,11 +1353,12 @@ function TripPlannerPanel({ trip, onSave, onClose, onActivate, onDelete }) {
                                                             />
                                                             <button className="sight-del-btn" onClick={() => removeSight(dIdx, sIdx)} title="Ta bort">✕</button>
                                                         </div>
+                                                        {/* ROW 2: Länk */}
                                                         <div className="sight-row2">
-                                                            <span style={{fontSize:'0.75rem', color:'var(--text-muted)', flexShrink:0}}>🔗</span>
+                                                            <span style={{fontSize:'0.8rem', color:'var(--text-muted)', flexShrink:0}}>🔗</span>
                                                             <input
                                                                 className="sight-link-input"
-                                                                placeholder="Länk (t.ex. TripAdvisor, hemsida...)"
+                                                                placeholder="Länk (TripAdvisor, hemsida...)"
                                                                 value={sight.link}
                                                                 onChange={e => updateSight(dIdx, sIdx, 'link', e.target.value)}
                                                             />
@@ -1232,6 +1366,38 @@ function TripPlannerPanel({ trip, onSave, onClose, onActivate, onDelete }) {
                                                                 <a className="sight-open-btn" href={sight.link.startsWith('http') ? sight.link : 'https://'+sight.link} target="_blank" rel="noreferrer" title="Öppna länk">↗</a>
                                                             )}
                                                         </div>
+                                                        {/* ROW 3: Karta */}
+                                                        <div className="sight-row2">
+                                                            <span style={{fontSize:'0.8rem', color:'var(--text-muted)', flexShrink:0}}>🗺</span>
+                                                            <input
+                                                                className="sight-link-input"
+                                                                placeholder="Kartavsökning (t.ex. Eiffeltornet, Paris)"
+                                                                value={sight.mapQuery || ''}
+                                                                onChange={e => updateSight(dIdx, sIdx, 'mapQuery', e.target.value)}
+                                                            />
+                                                            {!sight.mapQuery && sight.name && (
+                                                                <button
+                                                                    className="sight-open-btn"
+                                                                    style={{fontSize:'0.7rem', fontWeight:600, color:'var(--primary)', border:'1px solid var(--primary-light)', borderRadius:'4px', padding:'0.15rem 0.4rem', background:'none', cursor:'pointer', fontFamily:'DM Sans, sans-serif', whiteSpace:'nowrap'}}
+                                                                    onClick={() => updateSight(dIdx, sIdx, 'mapQuery', sight.name)}
+                                                                >Använd namn</button>
+                                                            )}
+                                                        </div>
+                                                        {/* MAP PREVIEW */}
+                                                        {sight.mapQuery && (
+                                                            <div className="map-iframe-wrap" style={{marginTop:'0.1rem'}}>
+                                                                <iframe
+                                                                    src={mapEmbedUrl(sight.mapQuery)}
+                                                                    allowFullScreen="" loading="lazy"
+                                                                    referrerPolicy="no-referrer-when-downgrade"
+                                                                    title={`Karta: ${sight.mapQuery}`}
+                                                                />
+                                                                <a className="map-open-btn" href={mapDirectUrl(sight.mapQuery)} target="_blank" rel="noreferrer">
+                                                                    🗺 Öppna i Google Maps
+                                                                </a>
+                                                            </div>
+                                                        )}
+                                                        {/* ROW 4: Anteckning */}
                                                         <textarea
                                                             className="sight-note-input"
                                                             placeholder="Anteckning (öppettider, tips, bokningsnummer...)"
