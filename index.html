@@ -729,21 +729,53 @@ function SightMap({ query }) {
     );
 }
 
-// ── BESÖKSMÅL-PANEL (pågående resa) ──────────────────────
-function SightsPanel({ trip, onClose }) {
+// ── BESÖKSMÅL-PANEL (pågående resa, redigerbar) ───────────
+function SightsPanel({ trip, onClose, onUpdateTrip }) {
     const [activeDest, setActiveDest] = useState(0);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
 
-    const destinations = React.useMemo(() => {
+    const [destinations, setDestinations] = useState(() => {
         try {
             const parsed = JSON.parse(trip.plan_data || '[]');
-            return parsed.filter(d => d.name || d.sights?.length > 0 || d.mapQuery);
-        } catch { return []; }
-    }, [trip.plan_data]);
+            return parsed.length > 0 ? parsed : [makeDestination()];
+        } catch { return [makeDestination()]; }
+    });
 
-    if (destinations.length === 0) return null;
+    const dest = destinations[Math.min(activeDest, destinations.length - 1)];
 
-    const dest = destinations[activeDest] || destinations[0];
-    const hasSights = dest.sights && dest.sights.filter(s => s.name).length > 0;
+    const updateDest = (field, val) =>
+        setDestinations(ds => ds.map((d, i) => i === activeDest ? { ...d, [field]: val } : d));
+
+    const updateSight = (sIdx, field, val) =>
+        setDestinations(ds => ds.map((d, i) => i !== activeDest ? d : {
+            ...d, sights: d.sights.map((s, j) => j === sIdx ? { ...s, [field]: val } : s)
+        }));
+
+    const addDest = () => {
+        const nd = makeDestination();
+        setDestinations(ds => [...ds, nd]);
+        setActiveDest(destinations.length);
+    };
+
+    const removeDest = (idx) => {
+        setDestinations(ds => ds.filter((_, i) => i !== idx));
+        setActiveDest(a => Math.min(a, destinations.length - 2));
+    };
+
+    const addSight = () =>
+        setDestinations(ds => ds.map((d, i) => i !== activeDest ? d : { ...d, sights: [...(d.sights || []), makeSight()] }));
+
+    const removeSight = (sIdx) =>
+        setDestinations(ds => ds.map((d, i) => i !== activeDest ? d : { ...d, sights: d.sights.filter((_, j) => j !== sIdx) }));
+
+    const handleSave = async () => {
+        setSaving(true);
+        await onUpdateTrip(trip.id, { plan_data: JSON.stringify(destinations) });
+        setSaving(false);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+    };
 
     const mapEmbedUrl = (q) => q ? `https://maps.google.com/maps?q=${encodeURIComponent(q)}&output=embed` : null;
     const mapDirectUrl = (q) => `https://www.google.com/maps/search/${encodeURIComponent(q)}`;
@@ -763,132 +795,159 @@ function SightsPanel({ trip, onClose }) {
                 </div>
 
                 <div className="planning-panel-body">
-                    {/* DEST TABS */}
-                    {destinations.length > 1 && (
-                        <div style={{display:'flex', gap:'0.5rem', flexWrap:'wrap'}}>
-                            {destinations.map((d, i) => (
+
+                    {/* DESTINATION TABS + ADD */}
+                    <div style={{display:'flex', gap:'0.5rem', flexWrap:'wrap', alignItems:'center'}}>
+                        {destinations.map((d, i) => (
+                            <div key={d.id || i} style={{display:'flex', alignItems:'center', gap:'0.2rem'}}>
                                 <button
-                                    key={d.id || i}
                                     onClick={() => setActiveDest(i)}
                                     style={{
-                                        padding:'0.4rem 1rem', borderRadius:'20px', border:'2px solid',
+                                        padding:'0.4rem 0.9rem', borderRadius:'20px', border:'2px solid var(--primary)',
                                         fontFamily:'Inter, sans-serif', fontSize:'0.88rem', fontWeight:600, cursor:'pointer',
                                         background: i === activeDest ? 'var(--primary)' : 'white',
                                         color: i === activeDest ? 'white' : 'var(--primary)',
-                                        borderColor: 'var(--primary)', transition:'all 0.15s'
+                                        transition:'all 0.15s'
                                     }}
                                 >
-                                    {i + 1}. {d.name || `Destination ${i+1}`}
+                                    {d.name || `Destination ${i+1}`}
                                 </button>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* DESTINATION INFO */}
-                    <div style={{display:'flex', flexDirection:'column', gap:'1.25rem'}}>
-                        {/* DATES */}
-                        {(dest.dateFrom || dest.dateTo) && (
-                            <div style={{display:'flex', gap:'1rem', background:'var(--bg)', borderRadius:'8px', padding:'0.75rem 1rem'}}>
-                                {dest.dateFrom && (
-                                    <div>
-                                        <div className="date-label">📅 Ankomst</div>
-                                        <div style={{fontFamily:'Space Mono, monospace', fontWeight:700, fontSize:'0.95rem'}}>{dest.dateFrom}</div>
-                                    </div>
-                                )}
-                                {dest.dateFrom && dest.dateTo && <div style={{color:'var(--border)', alignSelf:'center', fontSize:'1.2rem'}}>→</div>}
-                                {dest.dateTo && (
-                                    <div>
-                                        <div className="date-label">✈️ Avresa</div>
-                                        <div style={{fontFamily:'Space Mono, monospace', fontWeight:700, fontSize:'0.95rem'}}>{dest.dateTo}</div>
-                                    </div>
-                                )}
-                                {dest.dateFrom && dest.dateTo && new Date(dest.dateTo) > new Date(dest.dateFrom) && (
-                                    <div style={{marginLeft:'auto', alignSelf:'center', fontSize:'0.85rem', color:'var(--text-muted)', fontWeight:600}}>
-                                        {Math.round((new Date(dest.dateTo) - new Date(dest.dateFrom)) / 86400000)} nätter
-                                    </div>
+                                {destinations.length > 1 && (
+                                    <button onClick={() => removeDest(i)} style={{background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:'0.8rem', padding:'0.2rem', lineHeight:1}} title="Ta bort destination">✕</button>
                                 )}
                             </div>
-                        )}
+                        ))}
+                        <button className="add-link" onClick={addDest} style={{fontSize:'0.85rem'}}>+ Ny destination</button>
+                    </div>
 
-                        {/* MAP */}
-                        {dest.mapQuery && (
+                    {/* DESTINATION FIELDS */}
+                    <div style={{display:'flex', flexDirection:'column', gap:'1.25rem'}}>
+
+                        {/* DEST NAME + DATES */}
+                        <div style={{background:'var(--bg)', borderRadius:'10px', padding:'1rem', display:'flex', flexDirection:'column', gap:'0.75rem'}}>
                             <div>
-                                <span className="section-label">🗺 Karta — {dest.mapQuery}</span>
-                                <div className="map-iframe-wrap">
-                                    <iframe
-                                        src={mapEmbedUrl(dest.mapQuery)}
-                                        allowFullScreen=""
-                                        loading="lazy"
-                                        referrerPolicy="no-referrer-when-downgrade"
-                                        title={`Karta: ${dest.mapQuery}`}
-                                    />
-                                    <a className="map-open-btn" href={mapDirectUrl(dest.mapQuery)} target="_blank" rel="noreferrer">
-                                        🗺 Öppna i Google Maps
-                                    </a>
+                                <div className="form-label" style={{marginBottom:'0.35rem'}}>Destinationsnamn</div>
+                                <input
+                                    className="form-input"
+                                    placeholder="t.ex. Bangkok, Chiang Mai..."
+                                    value={dest.name || ''}
+                                    onChange={e => updateDest('name', e.target.value)}
+                                />
+                            </div>
+                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem'}}>
+                                <div>
+                                    <div className="date-label" style={{marginBottom:'0.35rem'}}>📅 Ankomst</div>
+                                    <input type="date" className="form-input" value={dest.dateFrom || ''} onChange={e => updateDest('dateFrom', e.target.value)} />
+                                </div>
+                                <div>
+                                    <div className="date-label" style={{marginBottom:'0.35rem'}}>✈️ Avresa</div>
+                                    <input type="date" className="form-input" value={dest.dateTo || ''} onChange={e => updateDest('dateTo', e.target.value)} min={dest.dateFrom || ''} />
                                 </div>
                             </div>
-                        )}
+                            {dest.dateFrom && dest.dateTo && new Date(dest.dateTo) > new Date(dest.dateFrom) && (
+                                <div style={{fontSize:'0.82rem', color:'var(--text-muted)', fontWeight:600}}>
+                                    {Math.round((new Date(dest.dateTo) - new Date(dest.dateFrom)) / 86400000)} nätter
+                                </div>
+                            )}
+                        </div>
 
-        {/* SIGHTS */}
-                        {hasSights && (
-                            <div>
-                                <span className="section-label">📍 Besöksmål</span>
-                                <div className="sights-list">
-                                    {dest.sights.filter(s => s.name).map((sight, i) => (
-                                        <div key={sight.id || i} style={{
-                                            background:'white', border:'1.5px solid var(--border)',
-                                            borderRadius:'10px', overflow:'hidden',
-                                            display:'flex', flexDirection:'column'
-                                        }}>
-                                            {/* SIGHT HEADER */}
-                                            <div style={{padding:'0.9rem 1rem 0.75rem', display:'flex', flexDirection:'column', gap:'0.5rem'}}>
-                                                <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'0.5rem'}}>
-                                                    <div style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
-                                                        <span style={{fontSize:'1.1rem'}}>📍</span>
-                                                        <span style={{fontWeight:700, fontSize:'0.95rem'}}>{sight.name}</span>
-                                                    </div>
-                                                    {sight.link && (
-                                                        <a
-                                                            href={sight.link.startsWith('http') ? sight.link : 'https://'+sight.link}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            style={{
-                                                                display:'inline-flex', alignItems:'center', gap:'0.3rem',
-                                                                background:'var(--primary)', color:'white', textDecoration:'none',
-                                                                padding:'0.3rem 0.75rem', borderRadius:'6px', fontSize:'0.8rem', fontWeight:600,
-                                                                flexShrink:0, transition:'background 0.15s'
-                                                            }}
-                                                        >
-                                                            ↗ Öppna länk
-                                                        </a>
-                                                    )}
-                                                </div>
-                                                {sight.note && (
-                                                    <div style={{
-                                                        fontSize:'0.85rem', color:'var(--text-muted)',
-                                                        background:'var(--bg)', borderRadius:'6px',
-                                                        padding:'0.5rem 0.75rem', lineHeight:'1.5'
-                                                    }}>
-                                                        {sight.note}
-                                                    </div>
+                        {/* KARTA */}
+                        <div>
+                            <span className="section-label">🗺 Karta</span>
+                            <div className="map-input-row">
+                                <input
+                                    placeholder={dest.name ? `t.ex. ${dest.name} centrum` : 'Sök plats...'}
+                                    value={dest.mapQuery || ''}
+                                    onChange={e => updateDest('mapQuery', e.target.value)}
+                                />
+                                {!dest.mapQuery && dest.name && (
+                                    <button className="btn btn-secondary btn-small" onClick={() => updateDest('mapQuery', dest.name)}>Använd namn</button>
+                                )}
+                            </div>
+                            {dest.mapQuery && (
+                                <div className="map-iframe-wrap">
+                                    <iframe src={mapEmbedUrl(dest.mapQuery)} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title={`Karta: ${dest.mapQuery}`} />
+                                    <a className="map-open-btn" href={mapDirectUrl(dest.mapQuery)} target="_blank" rel="noreferrer">🗺 Öppna i Google Maps</a>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* BESÖKSMÅL */}
+                        <div>
+                            <span className="section-label">📍 Besöksmål</span>
+                            <div className="sights-list">
+                                {(dest.sights || []).map((sight, sIdx) => (
+                                    <div key={sight.id || sIdx} style={{background:'white', border:'1.5px solid var(--border)', borderRadius:'10px', overflow:'hidden'}}>
+                                        <div style={{padding:'0.9rem 1rem', display:'flex', flexDirection:'column', gap:'0.6rem'}}>
+                                            {/* NAME ROW */}
+                                            <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
+                                                <span style={{fontSize:'1rem'}}>📍</span>
+                                                <input
+                                                    className="sight-name-input"
+                                                    placeholder="Namn på besöksmål..."
+                                                    value={sight.name}
+                                                    onChange={e => updateSight(sIdx, 'name', e.target.value)}
+                                                />
+                                                <button className="sight-del-btn" onClick={() => removeSight(sIdx)} title="Ta bort">✕</button>
+                                            </div>
+                                            {/* LINK ROW */}
+                                            <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
+                                                <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>🔗</span>
+                                                <input
+                                                    className="sight-link-input"
+                                                    placeholder="Länk (TripAdvisor, hemsida...)"
+                                                    value={sight.link || ''}
+                                                    onChange={e => updateSight(sIdx, 'link', e.target.value)}
+                                                />
+                                                {sight.link && (
+                                                    <a href={sight.link.startsWith('http') ? sight.link : 'https://'+sight.link} target="_blank" rel="noreferrer" className="sight-open-btn">↗</a>
                                                 )}
                                             </div>
-                                            {/* SIGHT MAP — clickable overlay */}
-                                            {sight.mapQuery && (
-                                                <SightMap query={sight.mapQuery} />
-                                            )}
+                                            {/* MAP ROW */}
+                                            <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
+                                                <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>🗺</span>
+                                                <input
+                                                    className="sight-link-input"
+                                                    placeholder="Kartsökning (t.ex. Eiffeltornet, Paris)"
+                                                    value={sight.mapQuery || ''}
+                                                    onChange={e => updateSight(sIdx, 'mapQuery', e.target.value)}
+                                                />
+                                                {!sight.mapQuery && sight.name && (
+                                                    <button className="sight-open-btn" style={{fontSize:'0.7rem', fontWeight:600, color:'var(--primary)', border:'1px solid var(--primary-light)', borderRadius:'4px', padding:'0.15rem 0.4rem', background:'none', cursor:'pointer', whiteSpace:'nowrap'}} onClick={() => updateSight(sIdx, 'mapQuery', sight.name)}>Använd namn</button>
+                                                )}
+                                            </div>
+                                            {/* NOTE */}
+                                            <textarea
+                                                className="sight-note-input"
+                                                placeholder="Anteckning (öppettider, tips, bokningsnummer...)"
+                                                value={sight.note || ''}
+                                                onChange={e => updateSight(sIdx, 'note', e.target.value)}
+                                            />
                                         </div>
-                                    ))}
-                                </div>
+                                        {sight.mapQuery && <SightMap query={sight.mapQuery} />}
+                                        {/* READ-ONLY SIGHT LINK */}
+                                        {sight.name && !sight.mapQuery && sight.link && (
+                                            <div style={{padding:'0 1rem 0.75rem'}}>
+                                                <a href={sight.link.startsWith('http') ? sight.link : 'https://'+sight.link} target="_blank" rel="noreferrer"
+                                                    style={{display:'inline-flex', alignItems:'center', gap:'0.3rem', background:'var(--primary)', color:'white', textDecoration:'none', padding:'0.3rem 0.75rem', borderRadius:'6px', fontSize:'0.8rem', fontWeight:600}}>
+                                                    ↗ Öppna länk
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                <button className="add-link" onClick={addSight}>+ Lägg till besöksmål</button>
                             </div>
-                        )}
-
-                        {!hasSights && !dest.mapQuery && (
-                            <div style={{textAlign:'center', padding:'2rem', color:'var(--text-muted)'}}>
-                                Inga besöksmål eller karta planlagda för denna destination.
-                            </div>
-                        )}
+                        </div>
                     </div>
+                </div>
+
+                {/* SAVE BAR */}
+                <div className="panel-save-bar">
+                    <button className="btn btn-secondary" onClick={onClose}>Stäng</button>
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                        {saved ? '✓ Sparat!' : saving ? 'Sparar...' : '💾 Spara ändringar'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -1039,7 +1098,7 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
     return (
         <div>
             {sightsPanelTrip && (
-                <SightsPanel trip={sightsPanelTrip} onClose={() => setSightsPanelTrip(null)} />
+                <SightsPanel trip={sightsPanelTrip} onClose={() => setSightsPanelTrip(null)} onUpdateTrip={onUpdateTrip} />
             )}
 
             {/* VIKTIGA ANTECKNINGAR MODAL */}
@@ -1130,12 +1189,10 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
                                 <div className="tc-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</div>
                                 <div className="tc-actions" onClick={e => e.stopPropagation()}>
                                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.35rem'}}>
-                                        {hasPlanned && (
-                                            <button className="btn btn-secondary btn-small" style={{justifyContent:'center', fontSize:'0.82rem'}} onClick={() => setSightsPanelTrip(trip)}>📍 Besöksmål</button>
-                                        )}
+                                        <button className="btn btn-secondary btn-small" style={{justifyContent:'center', fontSize:'0.82rem'}} onClick={() => setSightsPanelTrip(trip)}>📍 Besöksmål</button>
                                         <button
                                             className="btn btn-secondary btn-small"
-                                            style={{justifyContent:'center', fontSize:'0.82rem', gridColumn: hasPlanned ? 'auto' : '1/-1'}}
+                                            style={{justifyContent:'center', fontSize:'0.82rem'}}
                                             onClick={e => handleNotesOpen(trip, e)}
                                         >{hasNotes ? '📋 Anteckningar ●' : '📋 Anteckningar'}</button>
                                     </div>
