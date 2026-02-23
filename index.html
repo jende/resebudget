@@ -3,36 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Våra Resor</title>
+    <title>Våra resor</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --primary: #2C5F2D;
-            --primary-light: #97BC62;
-            --accent: #FF6B35;
-            --bg: #FFFEF2;
+            --primary: #2F6F4E;
+            --primary-light: #6FAF8E;
+            --accent: #F4B860;
+            --bg: #E6F2EC;
             --card: #FFFFFF;
-            --text: #1A1A1A;
-            --text-muted: #666666;
-            --border: #E0E0E0;
-            --success: #4CAF50;
-            --warning: #FFA726;
-            --error: #EF5350;
+            --text: #1F2D26;
+            --text-muted: #5A7566;
+            --border: #C8DDD3;
+            --success: #2F6F4E;
+            --warning: #F4B860;
+            --error: #C0392B;
+            --danger: #C0392B;
         }
 
-        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
         .app-container { min-height: 100vh; padding: 2rem; }
 
         .header {
-            max-width: 1400px; margin: 0 auto 2rem;
+            max-width: 1400px; margin: 0 auto 0;
             display: flex; justify-content: space-between; align-items: center;
-            padding-bottom: 1.5rem; border-bottom: 2px solid var(--primary);
+            padding: 1.25rem 0 1.25rem;
+            position: relative;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(to right,
+                transparent 0%,
+                var(--primary-light) 15%,
+                var(--primary) 40%,
+                var(--accent) 60%,
+                var(--primary) 80%,
+                transparent 100%
+            );
+            border-radius: 2px;
+            opacity: 0.7;
+        }
+        .header-spacer {
+            height: 2rem;
         }
         .logo { font-family: 'Space Mono', monospace; font-size: 1.8rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 0.5rem; }
         .user-info { display: flex; align-items: center; gap: 1rem; }
@@ -48,15 +69,15 @@
             border: 2px solid transparent;
         }
         .user-badge.admin-badge:hover {
-            background: #e55a2b;
+            background: #e0a450;
             transform: translateY(-1px);
-            box-shadow: 0 3px 10px rgba(255,107,53,0.35);
+            box-shadow: 0 3px 10px rgba(244,184,96,0.4);
         }
 
-        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover:not(:disabled) { background: #3a7a3b; transform: translateY(-2px); }
+        .btn-primary:hover:not(:disabled) { background: #255c40; transform: translateY(-2px); }
         .btn-secondary { background: white; color: var(--primary); border: 2px solid var(--primary); }
         .btn-secondary:hover:not(:disabled) { background: var(--primary); color: white; }
         .btn-danger { background: var(--error); color: white; }
@@ -66,14 +87,14 @@
 
         .main-content { max-width: 1400px; margin: 0 auto; }
 
-        .login-container { max-width: 400px; margin: 5rem auto; background: var(--card); padding: 3rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .login-container { max-width: 400px; margin: 5rem auto; background: var(--card); padding: 3rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(47,111,78,0.1); }
         .login-title { font-family: 'Space Mono', monospace; font-size: 2rem; margin-bottom: 2rem; text-align: center; color: var(--primary); }
 
         .form-group { margin-bottom: 1.5rem; }
         .form-label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text); }
-        .form-input { width: 100%; padding: 0.875rem; border: 2px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 1rem; transition: border-color 0.2s; }
+        .form-input { width: 100%; padding: 0.875rem; border: 2px solid var(--border); border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 1rem; transition: border-color 0.2s; }
         .form-input:focus { outline: none; border-color: var(--primary); }
-        .form-select { width: 100%; padding: 0.875rem; border: 2px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 1rem; background: white; cursor: pointer; }
+        .form-select { width: 100%; padding: 0.875rem; border: 2px solid var(--border); border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 1rem; background: white; cursor: pointer; }
 
         /* TABS */
         .tabs {
@@ -84,15 +105,15 @@
         }
         .tab {
             padding: 0.75rem 1.75rem; background: none; border: none;
-            font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 500;
+            font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 500;
             color: var(--text-muted); cursor: pointer; border-radius: 8px;
             transition: all 0.2s; position: relative; white-space: nowrap;
         }
         .tab.active {
             background: var(--primary); color: white;
-            box-shadow: 0 2px 8px rgba(44,95,45,0.3);
+            box-shadow: 0 2px 8px rgba(47,111,78,0.3);
         }
-        .tab:not(.active):hover { color: var(--primary); background: #f0f7f0; }
+        .tab:not(.active):hover { color: var(--primary); background: #d4eadd; }
 
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
         .card { background: var(--card); padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 1px solid var(--border); }
@@ -138,7 +159,7 @@
         .trip-card:hover .tc-img { transform: scale(1.04); }
         .tc-img-placeholder {
             position: absolute; inset: 0;
-            background: linear-gradient(135deg, #1a3a2a 0%, #2c5f2d 60%, #4a8c4b 100%);
+            background: linear-gradient(135deg, #1a3a2a 0%, #2F6F4E 60%, #6FAF8E 100%);
         }
         /* Dark gradient overlay for legibility */
         .tc-overlay {
@@ -170,7 +191,7 @@
             border: 1px solid rgba(255,255,255,0.25);
         }
         .tc-badge-planned { background: rgba(255,193,7,0.85); color: #333; }
-        .tc-badge-active  { background: rgba(44,95,45,0.85); color: white; }
+        .tc-badge-active  { background: rgba(47,111,78,0.9); color: white; }
         .tc-badge-done    { background: rgba(255,255,255,0.2); color: white; }
         /* Bottom content */
         .tc-bottom {
@@ -198,7 +219,7 @@
             backdrop-filter: blur(8px);
         }
         .tc-actions .btn-primary {
-            background: rgba(44,95,45,0.9); border-color: rgba(255,255,255,0.2);
+            background: rgba(47,111,78,0.9); border-color: rgba(255,255,255,0.2);
         }
         .tc-actions .btn-secondary {
             background: rgba(255,255,255,0.18); color: white; border-color: rgba(255,255,255,0.3);
@@ -260,7 +281,7 @@
         .cat-chip-del { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 0 0 0.1rem; transition: color 0.15s; }
         .cat-chip-del:hover { color: var(--error); }
         .cat-add-row { display: flex; gap: 0.5rem; align-items: center; }
-        .cat-add-row input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; font-family: 'DM Sans', sans-serif; }
+        .cat-add-row input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; font-family: 'Inter', sans-serif; }
         .cat-add-row input:focus { outline: none; border-color: var(--primary); }
         .emoji-picker { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.6rem; }
         .emoji-btn { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 0.2rem 0.4rem; font-size: 1.1rem; cursor: pointer; transition: all 0.15s; }
@@ -325,7 +346,7 @@
         /* VIEW TOGGLE */
         .view-toggle { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; align-items: center; }
         .view-toggle-label { font-size: 0.85rem; color: var(--text-muted); margin-right: 0.25rem; }
-        .toggle-btn { padding: 0.4rem 0.9rem; border-radius: 20px; border: 1.5px solid var(--border); background: white; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
+        .toggle-btn { padding: 0.4rem 0.9rem; border-radius: 20px; border: 1.5px solid var(--border); background: white; font-family: 'Inter', sans-serif; font-size: 0.85rem; cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
         .toggle-btn.active { background: var(--primary); border-color: var(--primary); color: white; font-weight: 600; }
 
 
@@ -343,17 +364,17 @@
         .dest-card { background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; }
         .dest-card-header { background: white; padding: 0.9rem 1.25rem; display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--border); }
         .dest-number { width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
-        .dest-name-input { flex: 1; border: 1.5px solid var(--border); border-radius: 6px; padding: 0.4rem 0.7rem; font-family: DM Sans, sans-serif; font-size: 0.95rem; font-weight: 600; }
+        .dest-name-input { flex: 1; border: 1.5px solid var(--border); border-radius: 6px; padding: 0.4rem 0.7rem; font-family: Inter, sans-serif; font-size: 0.95rem; font-weight: 600; }
         .dest-name-input:focus { outline: none; border-color: var(--primary); }
         .dest-body { padding: 1.1rem 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
         .dates-row { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
         .date-field { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 120px; }
         .date-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-        .date-input { padding: 0.45rem 0.65rem; border: 1.5px solid var(--border); border-radius: 6px; font-family: DM Sans, sans-serif; font-size: 0.88rem; }
+        .date-input { padding: 0.45rem 0.65rem; border: 1.5px solid var(--border); border-radius: 6px; font-family: Inter, sans-serif; font-size: 0.88rem; }
         .date-input:focus { outline: none; border-color: var(--primary); }
         .section-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.25rem; display: block; }
         .map-input-row { display: flex; gap: 0.5rem; }
-        .map-input-row input { flex: 1; padding: 0.5rem 0.75rem; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.88rem; font-family: DM Sans, sans-serif; }
+        .map-input-row input { flex: 1; padding: 0.5rem 0.75rem; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.88rem; font-family: Inter, sans-serif; }
         .map-input-row input:focus { outline: none; border-color: var(--primary); }
         .map-iframe-wrap { position: relative; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border); margin-top: 0.4rem; }
         .map-iframe-wrap iframe { width: 100%; height: 200px; display: block; border: none; }
@@ -362,17 +383,17 @@
         .sight-item { background: white; border: 1.5px solid var(--border); border-radius: 8px; padding: 0.7rem 0.9rem; display: flex; flex-direction: column; gap: 0.45rem; }
         .sight-row1 { display: flex; gap: 0.5rem; align-items: center; }
         .sight-row2 { display: flex; gap: 0.5rem; align-items: center; }
-        .sight-name-input { flex: 1; border: 1.5px solid var(--border); border-radius: 6px; padding: 0.35rem 0.6rem; font-size: 0.88rem; font-family: DM Sans, sans-serif; font-weight: 500; }
+        .sight-name-input { flex: 1; border: 1.5px solid var(--border); border-radius: 6px; padding: 0.35rem 0.6rem; font-size: 0.88rem; font-family: Inter, sans-serif; font-weight: 500; }
         .sight-name-input:focus { outline: none; border-color: var(--primary); }
-        .sight-link-input { flex: 1; border: 1.5px solid var(--border); border-radius: 6px; padding: 0.3rem 0.55rem; font-size: 0.8rem; font-family: DM Sans, sans-serif; color: var(--text-muted); }
+        .sight-link-input { flex: 1; border: 1.5px solid var(--border); border-radius: 6px; padding: 0.3rem 0.55rem; font-size: 0.8rem; font-family: Inter, sans-serif; color: var(--text-muted); }
         .sight-link-input:focus { outline: none; border-color: var(--primary); }
-        .sight-note-input { width: 100%; border: 1.5px solid var(--border); border-radius: 6px; padding: 0.35rem 0.55rem; font-size: 0.82rem; font-family: DM Sans, sans-serif; resize: vertical; min-height: 48px; color: var(--text-muted); box-sizing: border-box; }
+        .sight-note-input { width: 100%; border: 1.5px solid var(--border); border-radius: 6px; padding: 0.35rem 0.55rem; font-size: 0.82rem; font-family: Inter, sans-serif; resize: vertical; min-height: 48px; color: var(--text-muted); box-sizing: border-box; }
         .sight-note-input:focus { outline: none; border-color: var(--primary); }
         .sight-del-btn { color: var(--text-muted); font-size: 1rem; background: none; border: none; cursor: pointer; flex-shrink: 0; transition: color 0.15s; padding: 0.2rem; }
         .sight-del-btn:hover { color: var(--error); }
         .sight-open-btn { color: var(--primary); font-size: 1.1rem; padding: 0.2rem; background: none; border: none; cursor: pointer; text-decoration: none; flex-shrink: 0; display: inline-flex; align-items: center; }
         .sight-open-btn:hover { color: var(--accent); }
-        .add-link { background: none; border: none; color: var(--primary); font-size: 0.83rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0; font-family: DM Sans, sans-serif; }
+        .add-link { background: none; border: none; color: var(--primary); font-size: 0.83rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0; font-family: Inter, sans-serif; }
         .add-link:hover { color: var(--accent); }
         .sights-list { display: flex; flex-direction: column; gap: 0.5rem; }
         .panel-save-bar { position: sticky; bottom: 0; background: white; border-top: 1px solid var(--border); padding: 1rem 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; }
@@ -741,7 +762,7 @@ function SightsPanel({ trip, onClose }) {
                                     onClick={() => setActiveDest(i)}
                                     style={{
                                         padding:'0.4rem 1rem', borderRadius:'20px', border:'2px solid',
-                                        fontFamily:'DM Sans, sans-serif', fontSize:'0.88rem', fontWeight:600, cursor:'pointer',
+                                        fontFamily:'Inter, sans-serif', fontSize:'0.88rem', fontWeight:600, cursor:'pointer',
                                         background: i === activeDest ? 'var(--primary)' : 'white',
                                         color: i === activeDest ? 'white' : 'var(--primary)',
                                         borderColor: 'var(--primary)', transition:'all 0.15s'
@@ -1191,7 +1212,7 @@ function App() {
         if (currentUser) {
             loadData();
             try {
-                const saved = localStorage.getItem('resebudget_cats_' + currentUser.id);
+                const saved = localStorage.getItem('varraresor_cats_' + currentUser.id);
                 if (saved) setCategories(JSON.parse(saved));
             } catch(e) {}
         }
@@ -1199,7 +1220,7 @@ function App() {
 
     const saveCategories = (cats) => {
         setCategories(cats);
-        try { localStorage.setItem('resebudget_cats_' + currentUser.id, JSON.stringify(cats)); } catch(e) {}
+        try { localStorage.setItem('varraresor_cats_' + currentUser.id, JSON.stringify(cats)); } catch(e) {}
     };
 
     const loadData = async () => {
@@ -1295,6 +1316,7 @@ function App() {
                 onLogout={() => setCurrentUser(null)}
                 onAdminClick={() => setShowAdmin(true)}
             />
+            <div className="header-spacer" />
             {error && <div className="alert alert-error">{error}</div>}
 
             {showAdmin && currentUser.is_admin && (
@@ -1600,7 +1622,7 @@ function TripPlannerPanel({ trip, onSave, onClose, onActivate, onDelete }) {
                                                             {!sight.mapQuery && sight.name && (
                                                                 <button
                                                                     className="sight-open-btn"
-                                                                    style={{fontSize:'0.7rem', fontWeight:600, color:'var(--primary)', border:'1px solid var(--primary-light)', borderRadius:'4px', padding:'0.15rem 0.4rem', background:'none', cursor:'pointer', fontFamily:'DM Sans, sans-serif', whiteSpace:'nowrap'}}
+                                                                    style={{fontSize:'0.7rem', fontWeight:600, color:'var(--primary)', border:'1px solid var(--primary-light)', borderRadius:'4px', padding:'0.15rem 0.4rem', background:'none', cursor:'pointer', fontFamily:'Inter, sans-serif', whiteSpace:'nowrap'}}
                                                                     onClick={() => updateSight(dIdx, sIdx, 'mapQuery', sight.name)}
                                                                 >Använd namn</button>
                                                             )}
@@ -1961,7 +1983,7 @@ function LoginForm({ onLogin }) {
 
     return (
         <div className="login-container">
-            <h1 className="login-title">Våra Resor</h1>
+            <h1 className="login-title">✈️ Våra resor</h1>
             {error && <div className="alert alert-error">{error}</div>}
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
@@ -1984,7 +2006,7 @@ function LoginForm({ onLogin }) {
 function Header({ user, onLogout, onAdminClick }) {
     return (
         <header className="header">
-            <div className="logo">Våra Resor</div>
+            <div className="logo">✈️ Våra resor</div>
             <div className="user-info">
                 {user.is_admin ? (
                     <span className="user-badge admin-badge" onClick={onAdminClick} title="Öppna adminpanelen">
