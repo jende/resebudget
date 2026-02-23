@@ -899,18 +899,31 @@ function getTripFlag(tripName) {
     return '🌍';
 }
 
+const PEXELS_KEY = 'VVd5ZKQX6htphwA9rMZPMV1kRO2cyIOabmLmc8ytfUO40YGzSLXoa6qL';
+
 function useTripImage(tripName) {
     const [imgUrl, setImgUrl] = React.useState(null);
     React.useEffect(() => {
         if (!tripName) return;
-        // Extract search term — use first meaningful word(s), skip year numbers
-        const query = tripName.replace(/\b20\d\d\b/g, '').trim().split(/\s+/).slice(0,2).join(' ');
+        const query = tripName.replace(/\b20\d\d\b/g, '').trim().split(/\s+/).slice(0,3).join(' ');
         if (!query) return;
-        // Unsplash Source — no API key needed, returns a redirect to a real image
-        const url = `https://source.unsplash.com/600x400/?${encodeURIComponent(query + ' travel landscape')}`;
-        // We use a tiny fetch to resolve the redirect and get the actual image URL
-        // but since unsplash source works directly as img src, we just set it
-        setImgUrl(url);
+        fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query + ' travel')}&per_page=1&orientation=landscape`, {
+            headers: { Authorization: PEXELS_KEY }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.photos && data.photos.length > 0) {
+                setImgUrl(data.photos[0].src.large);
+            } else {
+                // Fallback: Picsum med seed från resnamnet för konsekvent bild
+                const seed = tripName.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+                setImgUrl(`https://picsum.photos/seed/${seed}/600/400`);
+            }
+        })
+        .catch(() => {
+            const seed = tripName.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+            setImgUrl(`https://picsum.photos/seed/${seed}/600/400`);
+        });
     }, [tripName]);
     return imgUrl;
 }
