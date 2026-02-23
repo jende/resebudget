@@ -105,51 +105,129 @@
         /* TRIP CARDS */
         .trip-cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
             gap: 1.25rem;
             margin-bottom: 2rem;
         }
         .trip-card {
-            background: var(--card);
-            border: 2px solid var(--border);
-            border-radius: 14px;
-            padding: 1.25rem 1.25rem 1rem;
+            border-radius: 16px;
+            overflow: hidden;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.25s;
             position: relative;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            min-height: 240px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.13);
+            border: 2.5px solid transparent;
         }
         .trip-card:hover {
-            border-color: var(--primary-light);
-            box-shadow: 0 4px 16px rgba(44,95,45,0.12);
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.22);
         }
         .trip-card.selected {
             border-color: var(--primary);
-            background: #f0f7f0;
-            box-shadow: 0 4px 16px rgba(44,95,45,0.18);
+            box-shadow: 0 6px 24px rgba(44,95,45,0.35);
         }
-        .trip-card-icon { font-size: 2rem; margin-bottom: 0.25rem; }
-        .trip-card-name { font-weight: 700; font-size: 1.05rem; color: var(--text); line-height: 1.3; }
-        .trip-card-meta { font-size: 0.8rem; color: var(--text-muted); }
-        .trip-card-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border);
+        /* Image layer */
+        .tc-img {
+            position: absolute; inset: 0;
+            background-size: cover; background-position: center;
+            transition: transform 0.4s;
         }
-        .trip-card-total { font-family: 'Space Mono', monospace; font-size: 0.95rem; font-weight: 700; color: var(--primary); }
+        .trip-card:hover .tc-img { transform: scale(1.04); }
+        .tc-img-placeholder {
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, #1a3a2a 0%, #2c5f2d 60%, #4a8c4b 100%);
+        }
+        /* Dark gradient overlay for legibility */
+        .tc-overlay {
+            position: absolute; inset: 0;
+            background: linear-gradient(to bottom,
+                rgba(0,0,0,0.08) 0%,
+                rgba(0,0,0,0.15) 30%,
+                rgba(0,0,0,0.65) 70%,
+                rgba(0,0,0,0.82) 100%);
+        }
+        /* Content sits above image */
+        .tc-content {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column;
+            height: 100%; padding: 0;
+        }
+        /* Top bar: flag + badges */
+        .tc-top {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            padding: 0.9rem 1rem 0;
+        }
+        .tc-flag {
+            font-size: 2.2rem; line-height: 1;
+            filter: drop-shadow(0 1px 4px rgba(0,0,0,0.5));
+        }
+        .tc-badge {
+            font-size: 0.68rem; font-weight: 700; border-radius: 20px;
+            padding: 0.2rem 0.55rem; backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.25);
+        }
+        .tc-badge-planned { background: rgba(255,193,7,0.85); color: #333; }
+        .tc-badge-active  { background: rgba(44,95,45,0.85); color: white; }
+        .tc-badge-done    { background: rgba(255,255,255,0.2); color: white; }
+        /* Bottom content */
+        .tc-bottom {
+            margin-top: auto;
+            padding: 0.75rem 1rem 1rem;
+        }
+        .tc-name {
+            font-weight: 800; font-size: 1.1rem; color: white;
+            line-height: 1.25; margin-bottom: 0.3rem;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+        }
+        .tc-meta {
+            font-size: 0.75rem; color: rgba(255,255,255,0.8);
+            margin-bottom: 0.6rem; line-height: 1.4;
+        }
+        .tc-total {
+            font-family: 'Space Mono', monospace;
+            font-size: 1rem; font-weight: 700; color: white;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+        .tc-actions {
+            display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.6rem;
+        }
+        .tc-actions .btn {
+            backdrop-filter: blur(8px);
+        }
+        .tc-actions .btn-primary {
+            background: rgba(44,95,45,0.9); border-color: rgba(255,255,255,0.2);
+        }
+        .tc-actions .btn-secondary {
+            background: rgba(255,255,255,0.18); color: white; border-color: rgba(255,255,255,0.3);
+        }
+        .tc-actions .btn-secondary:hover { background: rgba(255,255,255,0.28); }
+        .tc-actions .btn-danger {
+            background: rgba(183,28,28,0.75); border-color: rgba(255,255,255,0.2); color: white;
+        }
+        /* Budget bar on cards */
+        .tc-budget-bar {
+            height: 3px; background: rgba(255,255,255,0.2);
+            border-radius: 2px; margin-bottom: 0.5rem; overflow: hidden;
+        }
+        .tc-budget-fill {
+            height: 100%; border-radius: 2px; transition: width 0.5s;
+        }
         .trip-card-del {
-            background: none; border: none; cursor: pointer;
-            color: var(--text-muted); font-size: 1rem; padding: 0.25rem;
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+            backdrop-filter: blur(4px); cursor: pointer;
+            color: white; font-size: 1rem; padding: 0.3rem 0.5rem;
             border-radius: 6px; transition: all 0.15s; line-height: 1;
         }
-        .trip-card-del:hover { color: var(--error); background: #ffebee; }
+        .trip-card-del:hover { background: rgba(183,28,28,0.6); }
+        .trip-card-total { font-family: 'Space Mono', monospace; font-size: 0.95rem; font-weight: 700; color: white; }
         .trip-card-new {
             border: 2px dashed var(--border);
             background: transparent;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 0.5rem; color: var(--text-muted); min-height: 130px;
+            gap: 0.5rem; color: var(--text-muted); min-height: 240px;
             font-size: 0.95rem; font-weight: 500;
         }
         .trip-card-new:hover {
@@ -786,6 +864,83 @@ function SightsPanel({ trip, onClose }) {
     );
 }
 
+// ── TRIP IMAGE + FLAG UTILITIES ──────────────────────────
+const FLAG_MAP = {
+    // Länder → flaggemoji
+    'thailand':'🇹🇭','japan':'🇯🇵','japan':'🇯🇵','usa':'🇺🇸','usa':'🇺🇸',
+    'italien':'🇮🇹','italy':'🇮🇹','frankrike':'🇫🇷','france':'🇫🇷',
+    'spanien':'🇪🇸','spain':'🇪🇸','portugal':'🇵🇹','grekland':'🇬🇷','greece':'🇬🇷',
+    'turkiet':'🇹🇷','turkey':'🇹🇷','england':'🇬🇧','london':'🇬🇧','uk':'🇬🇧',
+    'norge':'🇳🇴','norway':'🇳🇴','danmark':'🇩🇰','denmark':'🇩🇰','finland':'🇫🇮',
+    'island':'🇮🇸','iceland':'🇮🇸','kroatien':'🇭🇷','croatia':'🇭🇷',
+    'vietnam':'🇻🇳','bali':'🇮🇩','indonesien':'🇮🇩','indonesia':'🇮🇩',
+    'indien':'🇮🇳','india':'🇮🇳','marocko':'🇲🇦','morocco':'🇲🇦',
+    'mexiko':'🇲🇽','mexico':'🇲🇽','new york':'🇺🇸','paris':'🇫🇷',
+    'barcelona':'🇪🇸','rom':'🇮🇹','rome':'🇮🇹','amsterdam':'🇳🇱',
+    'berlin':'🇩🇪','tyskland':'🇩🇪','germany':'🇩🇪','österrike':'🇦🇹','austria':'🇦🇹',
+    'schweiz':'🇨🇭','switzerland':'🇨🇭','dubai':'🇦🇪','singapore':'🇸🇬',
+    'kanada':'🇨🇦','canada':'🇨🇦','australien':'🇦🇺','australia':'🇦🇺',
+    'new zealand':'🇳🇿','sydafrika':'🇿🇦','kenya':'🇰🇪','egypten':'🇪🇬','egypt':'🇪🇬',
+    'kuba':'🇨🇺','cuba':'🇨🇺','brasilien':'🇧🇷','brazil':'🇧🇷',
+    'peru':'🇵🇪','argentina':'🇦🇷','colombia':'🇨🇴','chile':'🇨🇱',
+    'sri lanka':'🇱🇰','nepal':'🇳🇵','cambodja':'🇰🇭','cambodia':'🇰🇭',
+    'laos':'🇱🇦','myanmar':'🇲🇲','filippinerna':'🇵🇭','philippines':'🇵🇭',
+    'malaysia':'🇲🇾','taiwan':'🇹🇼','sydkorea':'🇰🇷','korea':'🇰🇷',
+    'kina':'🇨🇳','china':'🇨🇳','hong kong':'🇭🇰','maldiverna':'🇲🇻','maldives':'🇲🇻',
+    'zanzibar':'🇹🇿','tanzania':'🇹🇿','island':'🇮🇸'
+};
+
+function getTripFlag(tripName) {
+    if (!tripName) return '🌍';
+    const lower = tripName.toLowerCase();
+    for (const [key, flag] of Object.entries(FLAG_MAP)) {
+        if (lower.includes(key)) return flag;
+    }
+    return '🌍';
+}
+
+function useTripImage(tripName) {
+    const [imgUrl, setImgUrl] = React.useState(null);
+    React.useEffect(() => {
+        if (!tripName) return;
+        // Extract search term — use first meaningful word(s), skip year numbers
+        const query = tripName.replace(/\b20\d\d\b/g, '').trim().split(/\s+/).slice(0,2).join(' ');
+        if (!query) return;
+        // Unsplash Source — no API key needed, returns a redirect to a real image
+        const url = `https://source.unsplash.com/600x400/?${encodeURIComponent(query + ' travel landscape')}`;
+        // We use a tiny fetch to resolve the redirect and get the actual image URL
+        // but since unsplash source works directly as img src, we just set it
+        setImgUrl(url);
+    }, [tripName]);
+    return imgUrl;
+}
+
+// Shared image+flag shell used by all three views
+function TripCardShell({ trip, badge, selected, onClick, children }) {
+    const imgUrl = useTripImage(trip.name);
+    const flag = getTripFlag(trip.name);
+    return (
+        <div
+            className={`trip-card ${selected ? 'selected' : ''}`}
+            onClick={onClick}
+        >
+            {/* Background image or gradient */}
+            {imgUrl
+                ? <div className="tc-img" style={{backgroundImage:`url(${imgUrl})`}} />
+                : <div className="tc-img-placeholder" />
+            }
+            <div className="tc-overlay" />
+            <div className="tc-content">
+                <div className="tc-top">
+                    <span className="tc-flag">{flag}</span>
+                    {badge && <span className={`tc-badge ${badge.cls}`}>{badge.label}</span>}
+                </div>
+                {children}
+            </div>
+        </div>
+    );
+}
+
 // ── RESAKORT ─────────────────────────────────────────────
 function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip }) {
     const [showNewTrip, setShowNewTrip] = useState(false);
@@ -845,59 +1000,49 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
                     const hasBudget = trip.budget && trip.budget > 0;
                     const hasPlanned = hasPlanData(trip);
                     return (
-                        <div
+                        <TripCardShell
                             key={trip.id}
-                            className={`trip-card ${selectedTrip === trip.id ? 'selected' : ''}`}
+                            trip={trip}
+                            badge={{ label:'✈ Pågående', cls:'tc-badge-active' }}
+                            selected={selectedTrip === trip.id}
                             onClick={() => onSelectTrip(selectedTrip === trip.id ? null : trip.id)}
                         >
-                            <div className="trip-card-icon">{getTripIcon(trip.id)}</div>
-                            <div className="trip-card-name">{trip.name}</div>
-                            <div className="trip-card-meta">{count} {count === 1 ? 'utgift' : 'utgifter'}{hasBudget ? ` · Budget: ${Number(trip.budget).toFixed(0)} kr` : ''}</div>
-                            {hasBudget && <BudgetBar budget={trip.budget} spent={total} />}
-                            {hasPlanned && (
-                                <button
-                                    style={{
-                                        alignSelf:'flex-start', marginTop:'0.25rem',
-                                        background:'var(--bg)', border:'1.5px solid var(--primary-light)',
-                                        borderRadius:'20px', padding:'0.25rem 0.75rem',
-                                        fontSize:'0.78rem', fontWeight:600, color:'var(--primary)',
-                                        cursor:'pointer', fontFamily:'DM Sans, sans-serif',
-                                        display:'flex', alignItems:'center', gap:'0.3rem',
-                                        transition:'all 0.15s'
-                                    }}
-                                    onClick={e => { e.stopPropagation(); setSightsPanelTrip(trip); }}
-                                    onMouseOver={e => e.currentTarget.style.background='#e8f5e9'}
-                                    onMouseOut={e => e.currentTarget.style.background='var(--bg)'}
-                                    title="Visa planerade besöksmål"
-                                >
-                                    📍 Besöksmål
-                                </button>
-                            )}
-                            <div style={{marginTop:'auto'}}>
-                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.6rem'}}>
-                                    <span className="trip-card-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</span>
+                            <div className="tc-bottom">
+                                <div className="tc-name">{trip.name}</div>
+                                <div className="tc-meta">
+                                    {count} {count === 1 ? 'utgift' : 'utgifter'}
+                                    {hasBudget ? ` · Budget: ${Number(trip.budget).toFixed(0)} kr` : ''}
                                 </div>
-                                <div style={{display:'flex', flexDirection:'column', gap:'0.4rem'}}>
-                                    <button
-                                        className="btn btn-primary btn-small"
-                                        style={{width:'100%', justifyContent:'center', fontSize:'0.85rem'}}
-                                        onClick={e => { e.stopPropagation(); onCompleteTrip(trip.id, trip.name); }}
-                                    >✅ Avsluta resa</button>
-                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.4rem'}}>
+                                {hasBudget && (() => {
+                                    const pct = Math.min(100, (total / trip.budget) * 100);
+                                    const color = pct > 90 ? '#f44336' : pct > 70 ? '#ff9800' : '#4caf50';
+                                    return (
+                                        <div className="tc-budget-bar">
+                                            <div className="tc-budget-fill" style={{width:`${pct}%`, background:color}} />
+                                        </div>
+                                    );
+                                })()}
+                                <div className="tc-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</div>
+                                <div className="tc-actions" onClick={e => e.stopPropagation()}>
+                                    {hasPlanned && (
                                         <button
                                             className="btn btn-secondary btn-small"
                                             style={{justifyContent:'center', fontSize:'0.82rem'}}
-                                            onClick={e => { e.stopPropagation(); onUnplanTrip(trip.id, trip.name); }}
-                                        >↩ Planerade</button>
-                                        <button
-                                            className="btn btn-danger btn-small"
-                                            style={{justifyContent:'center', fontSize:'0.82rem'}}
-                                            onClick={e => { e.stopPropagation(); onDeleteTrip(trip.id, trip.name); }}
-                                        >🗑 Ta bort</button>
+                                            onClick={() => setSightsPanelTrip(trip)}
+                                        >📍 Besöksmål</button>
+                                    )}
+                                    <button
+                                        className="btn btn-primary btn-small"
+                                        style={{width:'100%', justifyContent:'center', fontSize:'0.85rem'}}
+                                        onClick={() => onCompleteTrip(trip.id, trip.name)}
+                                    >✅ Avsluta resa</button>
+                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.35rem'}}>
+                                        <button className="btn btn-secondary btn-small" style={{justifyContent:'center', fontSize:'0.82rem'}} onClick={() => onUnplanTrip(trip.id, trip.name)}>↩ Planerade</button>
+                                        <button className="btn btn-danger btn-small" style={{justifyContent:'center', fontSize:'0.82rem'}} onClick={() => onDeleteTrip(trip.id, trip.name)}>🗑 Ta bort</button>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </TripCardShell>
                     );
                 })}
 
@@ -1556,39 +1701,29 @@ function PlannedTripsView({ trips, onAddTrip, onDeleteTrip, onActivateTrip, onUp
                     const destCount = getDestCount(trip);
                     const dateRange = getDateRange(trip);
                     return (
-                        <div key={trip.id} className="trip-card" style={{cursor:'default'}}>
-                            <div className="trip-card-icon">{getTripIcon(trip.id)}</div>
-                            <div className="trip-card-name">{trip.name}</div>
-                            <span style={{display:'inline-block', fontSize:'0.7rem', fontWeight:700, background:'#fff8e1', color:'#f57f17', border:'1px solid #ffe082', borderRadius:'20px', padding:'0.1rem 0.5rem', width:'fit-content'}}>
-                                🗓 Planerad
-                            </span>
-                            <div className="trip-card-meta" style={{display:'flex', flexDirection:'column', gap:'0.15rem'}}>
-                                {destCount > 0 && <span>{destCount} {destCount === 1 ? 'destination' : 'destinationer'}</span>}
-                                {dateRange && <span>📅 {dateRange}</span>}
-                                {trip.budget && trip.budget > 0 && <span>💰 Budget: {Number(trip.budget).toFixed(0)} kr</span>}
-                            </div>
-                            <div style={{marginTop:'auto'}}>
-                                <div style={{display:'flex', flexDirection:'column', gap:'0.4rem'}}>
-                                    <button
-                                        className="btn btn-primary btn-small"
-                                        style={{width:'100%', justifyContent:'center', fontSize:'0.85rem'}}
-                                        onClick={() => onActivateTrip(trip.id)}
-                                    >▶ Starta resa</button>
-                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.4rem'}}>
-                                        <button
-                                            className="btn btn-secondary btn-small"
-                                            style={{justifyContent:'center', fontSize:'0.82rem'}}
-                                            onClick={() => setEditingTrip(trip)}
-                                        >✏️ Planera</button>
-                                        <button
-                                            className="btn btn-danger btn-small"
-                                            style={{justifyContent:'center', fontSize:'0.82rem'}}
-                                            onClick={() => setConfirm({ id: trip.id, name: trip.name })}
-                                        >🗑 Ta bort</button>
+                        <TripCardShell
+                            key={trip.id}
+                            trip={trip}
+                            badge={{ label:'🗓 Planerad', cls:'tc-badge-planned' }}
+                            selected={false}
+                            onClick={null}
+                        >
+                            <div className="tc-bottom">
+                                <div className="tc-name">{trip.name}</div>
+                                <div className="tc-meta">
+                                    {destCount > 0 && `${destCount} ${destCount === 1 ? 'destination' : 'destinationer'}`}
+                                    {dateRange && ` · 📅 ${dateRange}`}
+                                    {trip.budget && trip.budget > 0 && ` · 💰 ${Number(trip.budget).toFixed(0)} kr`}
+                                </div>
+                                <div className="tc-actions">
+                                    <button className="btn btn-primary btn-small" style={{width:'100%', justifyContent:'center', fontSize:'0.85rem'}} onClick={() => onActivateTrip(trip.id)}>▶ Starta resa</button>
+                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.35rem'}}>
+                                        <button className="btn btn-secondary btn-small" style={{justifyContent:'center', fontSize:'0.82rem'}} onClick={() => setEditingTrip(trip)}>✏️ Planera</button>
+                                        <button className="btn btn-danger btn-small" style={{justifyContent:'center', fontSize:'0.82rem'}} onClick={() => setConfirm({ id: trip.id, name: trip.name })}>🗑 Ta bort</button>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </TripCardShell>
                     );
                 })}
 
@@ -1680,40 +1815,46 @@ function CompletedTripsView({ trips, allExpenses, users, currentUser, categories
                     const hasBudget = trip.budget && trip.budget > 0;
                     const underBudget = hasBudget && total <= trip.budget;
                     return (
-                        <div key={trip.id} className="trip-card completed" style={{cursor:'default'}}>
-                            <div className="trip-card-icon">{getTripIcon(trip.id)}</div>
-                            <div className="trip-card-name">{trip.name}</div>
-                            <span className="completed-badge">✓ Avslutad</span>
-                            <div className="trip-card-meta">{count} {count === 1 ? 'utgift' : 'utgifter'}{hasBudget ? ` · Budget: ${trip.budget.toFixed(0)} kr` : ''}</div>
-                            {hasBudget && <BudgetBar budget={trip.budget} spent={total} />}
-                            {hasBudget && (
-                                <div style={{fontSize:'0.8rem', color: underBudget ? 'var(--success)' : 'var(--error)', fontWeight:600}}>
-                                    {underBudget
-                                        ? `✓ Höll budgeten! Sparade ${(trip.budget - total).toFixed(0)} kr`
-                                        : `⚠️ Överskred budgeten med ${(total - trip.budget).toFixed(0)} kr`}
+                        <TripCardShell
+                            key={trip.id}
+                            trip={trip}
+                            badge={{ label:'✓ Avslutad', cls:'tc-badge-done' }}
+                            selected={false}
+                            onClick={null}
+                        >
+                            <div className="tc-bottom">
+                                <div className="tc-name">{trip.name}</div>
+                                <div className="tc-meta">
+                                    {count} {count === 1 ? 'utgift' : 'utgifter'}
+                                    {hasBudget ? ` · Budget: ${trip.budget.toFixed(0)} kr` : ''}
                                 </div>
-                            )}
-                            <div className="trip-card-footer">
-                                <span className="trip-card-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</span>
-                                <div style={{display:'flex', gap:'0.4rem'}}>
-                                    <button
-                                        className="btn btn-secondary btn-small"
-                                        style={{fontSize:'0.78rem', padding:'0.3rem 0.7rem'}}
-                                        onClick={() => {
-                                            setExpandedTrip(expandedTrip === trip.id ? null : trip.id);
-                                            setExpenseView('list');
-                                        }}
-                                    >
-                                        {expandedTrip === trip.id ? '▲ Dölj' : '📋 Visa utgifter'}
-                                    </button>
-                                    <button
-                                        className="trip-card-del"
-                                        title="Ta bort resa"
-                                        onClick={() => setConfirm({ type:'trip', id: trip.id, name: trip.name })}
-                                    >🗑</button>
+                                {hasBudget && (() => {
+                                    const pct = Math.min(100, (total / trip.budget) * 100);
+                                    const color = pct > 100 ? '#f44336' : '#4caf50';
+                                    return (
+                                        <div className="tc-budget-bar">
+                                            <div className="tc-budget-fill" style={{width:`${Math.min(100,pct)}%`, background:color}} />
+                                        </div>
+                                    );
+                                })()}
+                                {hasBudget && (
+                                    <div style={{fontSize:'0.75rem', color: underBudget ? '#a5d6a7' : '#ef9a9a', fontWeight:600, marginBottom:'0.4rem'}}>
+                                        {underBudget ? `✓ Sparade ${(trip.budget - total).toFixed(0)} kr` : `⚠ Överskred med ${(total - trip.budget).toFixed(0)} kr`}
+                                    </div>
+                                )}
+                                <div className="tc-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</div>
+                                <div className="tc-actions">
+                                    <div style={{display:'flex', gap:'0.35rem'}}>
+                                        <button
+                                            className="btn btn-secondary btn-small"
+                                            style={{flex:1, justifyContent:'center', fontSize:'0.78rem'}}
+                                            onClick={() => { setExpandedTrip(expandedTrip === trip.id ? null : trip.id); setExpenseView('list'); }}
+                                        >{expandedTrip === trip.id ? '▲ Dölj' : '📋 Visa utgifter'}</button>
+                                        <button className="trip-card-del" onClick={() => setConfirm({ type:'trip', id: trip.id, name: trip.name })}>🗑</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </TripCardShell>
                     );
                 })}
             </div>
