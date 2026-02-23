@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resebudget Tracker</title>
+    <title>Våra Resor</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1961,7 +1961,7 @@ function LoginForm({ onLogin }) {
 
     return (
         <div className="login-container">
-            <h1 className="login-title">✈️ Resebudget</h1>
+            <h1 className="login-title">Våra Resor</h1>
             {error && <div className="alert alert-error">{error}</div>}
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
@@ -1984,7 +1984,7 @@ function LoginForm({ onLogin }) {
 function Header({ user, onLogout, onAdminClick }) {
     return (
         <header className="header">
-            <div className="logo">✈️ Resebudget</div>
+            <div className="logo">Våra Resor</div>
             <div className="user-info">
                 {user.is_admin ? (
                     <span className="user-badge admin-badge" onClick={onAdminClick} title="Öppna adminpanelen">
