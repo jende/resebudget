@@ -976,12 +976,7 @@ function TripCardShell({ trip, badge, selected, onClick, children }) {
 }
 
 // ── RESAKORT ─────────────────────────────────────────────
-function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip }) {
-    const [showNewTrip, setShowNewTrip] = useState(false);
-    const [newTripName, setNewTripName] = useState('');
-    const [newTripBudget, setNewTripBudget] = useState('');
-    const [newTripStartDate, setNewTripStartDate] = useState('');
-    const [newTripEndDate, setNewTripEndDate] = useState('');
+function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onNewPlannedTrip }) {
     const [sightsPanelTrip, setSightsPanelTrip] = useState(null);
 
     const handleAddTrip = async (e) => {
@@ -1081,59 +1076,11 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
                 })}
 
                 {/* Ny resa-kort */}
-                <div className="trip-card trip-card-new" onClick={() => setShowNewTrip(true)}>
+                <div className="trip-card trip-card-new" onClick={onNewPlannedTrip}>
                     <span className="plus-icon">+</span>
                     <span>Ny resa</span>
                 </div>
             </div>
-
-            {showNewTrip && (
-                <div className="new-trip-overlay" onClick={() => setShowNewTrip(false)}>
-                    <div className="new-trip-box" onClick={e => e.stopPropagation()}>
-                        <h3>✈️ Skapa ny resa</h3>
-                        <form onSubmit={handleAddTrip}>
-                            <div className="form-group">
-                                <label className="form-label">Resans namn</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="t.ex. Thailand 2026"
-                                    value={newTripName}
-                                    onChange={e => setNewTripName(e.target.value)}
-                                    autoFocus
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Budget (kr) <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    className="form-input"
-                                    placeholder="t.ex. 20000"
-                                    value={newTripBudget}
-                                    onChange={e => setNewTripBudget(e.target.value)}
-                                />
-                            </div>
-                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem'}}>
-                                <div className="form-group" style={{marginBottom:0}}>
-                                    <label className="form-label">Startdatum <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
-                                    <input type="date" className="form-input" value={newTripStartDate} onChange={e => setNewTripStartDate(e.target.value)} />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Slutdatum <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
-                                    <input type="date" className="form-input" value={newTripEndDate} onChange={e => setNewTripEndDate(e.target.value)} min={newTripStartDate} />
-                                </div>
-                            </div>
-                            <div style={{display:'flex', gap:'0.75rem'}}>
-                                <button type="button" className="btn btn-secondary" style={{flex:1}} onClick={() => setShowNewTrip(false)}>Avbryt</button>
-                                <button type="submit" className="btn btn-primary" style={{flex:1}} disabled={!newTripName.trim()}>Skapa resa</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
@@ -1207,6 +1154,7 @@ function App() {
     const [error, setError] = useState(null);
     const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
     const [showAdmin, setShowAdmin] = useState(false);
+    const [autoEditTrip, setAutoEditTrip] = useState(null);
 
     useEffect(() => {
         if (currentUser) {
@@ -1245,9 +1193,10 @@ function App() {
         const { data, error } = await supabase.from('trips').insert([{ ...trip, created_by: currentUser.id }]).select();
         if (!error && data) {
             setTrips([data[0], ...trips]);
-            // Only auto-select if it's an active trip (not planned)
             if (!trip.is_planned) setSelectedTrip(data[0].id);
+            return data[0];
         }
+        return null;
     };
 
     const handleActivateTrip = async (id) => {
@@ -1296,7 +1245,20 @@ function App() {
         if (!error && data) setExpenses([data[0], ...expenses]);
     };
 
-    const handleDeleteExpense = async (id) => {
+    const handleNewPlannedTrip = async () => {
+        const newTrip = await handleAddTrip({
+            name: 'Ny resa',
+            budget: null,
+            plan_data: JSON.stringify([makeDestination()]),
+            is_planned: true,
+            is_completed: false,
+            created_at: new Date().toISOString()
+        });
+        if (newTrip) {
+            setActiveTab('planned');
+            setAutoEditTrip(newTrip);
+        }
+    };
         const { error } = await supabase.from('expenses').delete().eq('id', id);
         if (!error) setExpenses(expenses.filter(e => e.id !== id));
     };
@@ -1363,6 +1325,8 @@ function App() {
                         onDeleteTrip={handleDeleteTrip}
                         onActivateTrip={handleActivateTrip}
                         onUpdateTrip={handleUpdateTrip}
+                        autoEditTrip={autoEditTrip}
+                        onClearAutoEdit={() => setAutoEditTrip(null)}
                     />
                 )}
 
@@ -1385,6 +1349,7 @@ function App() {
                         onAddExpense={handleAddExpense}
                         onDeleteExpense={handleDeleteExpense}
                         onUpdateExpense={handleUpdateExpense}
+                        onNewPlannedTrip={handleNewPlannedTrip}
                     />
                 )}
 
@@ -1673,12 +1638,20 @@ function TripPlannerPanel({ trip, onSave, onClose, onActivate, onDelete }) {
 }
 
 // ── PLANERADE RESOR ───────────────────────────────────────
-function PlannedTripsView({ trips, onAddTrip, onDeleteTrip, onActivateTrip, onUpdateTrip }) {
+function PlannedTripsView({ trips, onAddTrip, onDeleteTrip, onActivateTrip, onUpdateTrip, autoEditTrip, onClearAutoEdit }) {
     const [editingTrip, setEditingTrip] = useState(null);
     const [confirm, setConfirm] = useState(null);
 
+    // Open planner automatically when a new trip is created from another tab
+    React.useEffect(() => {
+        if (autoEditTrip) {
+            setEditingTrip(autoEditTrip);
+            onClearAutoEdit();
+        }
+    }, [autoEditTrip]);
+
     const handleCreateTrip = async () => {
-        await onAddTrip({
+        const newTrip = await onAddTrip({
             name: 'Ny resa',
             budget: null,
             plan_data: JSON.stringify([makeDestination()]),
@@ -1686,6 +1659,7 @@ function PlannedTripsView({ trips, onAddTrip, onDeleteTrip, onActivateTrip, onUp
             is_completed: false,
             created_at: new Date().toISOString()
         });
+        if (newTrip) setEditingTrip(newTrip);
     };
 
     const getTripIcons = ['✈️','🌍','🏝️','🗺️','🚀','⛵','🏔️','🎒'];
@@ -2022,7 +1996,7 @@ function Header({ user, onLogout, onAdminClick }) {
 }
 
 // ── UTGIFTSVY ─────────────────────────────────────────────
-function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onAddExpense, onDeleteExpense, onUpdateExpense }) {
+function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onAddExpense, onDeleteExpense, onUpdateExpense, onNewPlannedTrip }) {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [currency, setCurrency] = useState('SEK');
@@ -2185,6 +2159,7 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                 onDeleteTrip={handleDeleteTripConfirm}
                 onCompleteTrip={(id, name) => setConfirm({ type:'complete', id, name })}
                 onUnplanTrip={(id, name) => setConfirm({ type:'unplan', id, name })}
+                onNewPlannedTrip={onNewPlannedTrip}
             />
 
             {!selectedTrip ? (
