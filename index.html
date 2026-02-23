@@ -32,8 +32,8 @@
 
         .header {
             max-width: 1400px; margin: 0 auto 0;
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 1.25rem 0 1.25rem;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 1.5rem 0 1.25rem;
             position: relative;
         }
         .header::after {
@@ -102,6 +102,7 @@
             background: white; border-radius: 12px; padding: 0.4rem;
             box-shadow: 0 2px 10px rgba(0,0,0,0.07); border: 1px solid var(--border);
             width: fit-content;
+            margin-left: auto; margin-right: auto;
         }
         .tab {
             padding: 0.75rem 1.75rem; background: none; border: none;
@@ -471,6 +472,15 @@
             .grid { grid-template-columns: 1fr; }
             .trip-card-footer { flex-wrap: wrap; gap: 0.5rem; }
         }
+        /* PRINT / PDF EXPORT */
+        @media print {
+            body { background: white !important; font-size: 11pt; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .print-page { page-break-after: always; }
+            .print-section { break-inside: avoid; }
+        }
+        .print-only { display: none; }
     </style>
 </head>
 <body>
@@ -976,8 +986,33 @@ function TripCardShell({ trip, badge, selected, onClick, children }) {
 }
 
 // ── RESAKORT ─────────────────────────────────────────────
-function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onNewPlannedTrip }) {
+function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onNewPlannedTrip, onUpdateTrip }) {
     const [sightsPanelTrip, setSightsPanelTrip] = useState(null);
+    const [renamingTrip, setRenamingTrip] = useState(null);  // trip id being renamed
+    const [renameValue, setRenameValue] = useState('');
+    const [notesTrip, setNotesTrip] = useState(null);        // trip id with notes open
+    const [notesValue, setNotesValue] = useState('');
+
+    const handleRenameStart = (trip, e) => {
+        e.stopPropagation();
+        setRenamingTrip(trip.id);
+        setRenameValue(trip.name);
+    };
+    const handleRenameSave = async (tripId, e) => {
+        e && e.stopPropagation();
+        if (renameValue.trim()) await onUpdateTrip(tripId, { name: renameValue.trim() });
+        setRenamingTrip(null);
+    };
+    const handleNotesOpen = (trip, e) => {
+        e.stopPropagation();
+        setNotesTrip(trip.id);
+        setNotesValue(trip.notes || '');
+    };
+    const handleNotesSave = async (tripId, e) => {
+        e && e.stopPropagation();
+        await onUpdateTrip(tripId, { notes: notesValue });
+        setNotesTrip(null);
+    };
 
     const getTripTotal = (tripId) => {
         return allExpenses
@@ -1007,12 +1042,44 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
                 <SightsPanel trip={sightsPanelTrip} onClose={() => setSightsPanelTrip(null)} />
             )}
 
+            {/* VIKTIGA ANTECKNINGAR MODAL */}
+            {notesTrip && (() => {
+                const trip = trips.find(t => t.id === notesTrip);
+                return (
+                    <div className="modal-overlay" onClick={() => setNotesTrip(null)}>
+                        <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'500px'}}>
+                            <div className="modal-header">
+                                <span className="modal-title">📋 Viktiga anteckningar — {trip?.name}</span>
+                                <button className="close-btn" onClick={() => setNotesTrip(null)}>×</button>
+                            </div>
+                            <p style={{fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:'0.75rem'}}>
+                                Pass, bokningsnummer, vaccinationer, viktiga kontakter...
+                            </p>
+                            <textarea
+                                className="form-input"
+                                rows="10"
+                                placeholder={"🛂 Pass gäller till: ...\n✈️ Bokningsnr: ...\n🏨 Hotelladress: ...\n💊 Medicin: ...\n📞 Nödkontakt: ..."}
+                                style={{resize:'vertical', fontFamily:'Inter, sans-serif', fontSize:'0.92rem', lineHeight:1.7}}
+                                value={notesValue}
+                                onChange={e => setNotesValue(e.target.value)}
+                                autoFocus
+                            />
+                            <div style={{display:'flex', gap:'0.75rem', marginTop:'1rem'}}>
+                                <button className="btn btn-secondary" style={{flex:1}} onClick={() => setNotesTrip(null)}>Avbryt</button>
+                                <button className="btn btn-primary" style={{flex:1}} onClick={e => handleNotesSave(notesTrip, e)}>💾 Spara</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
             <div className="trip-cards-grid">
                 {activeTrips.map(trip => {
                     const count = allExpenses.filter(e => e.trip_id === trip.id).length;
                     const total = getTripTotal(trip.id);
                     const hasBudget = trip.budget && trip.budget > 0;
                     const hasPlanned = hasPlanData(trip);
+                    const hasNotes = trip.notes && trip.notes.trim().length > 0;
                     return (
                         <TripCardShell
                             key={trip.id}
@@ -1022,10 +1089,34 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
                             onClick={() => onSelectTrip(selectedTrip === trip.id ? null : trip.id)}
                         >
                             <div className="tc-bottom">
-                                <div className="tc-name">{trip.name}</div>
+                                {/* Inline rename or name display */}
+                                {renamingTrip === trip.id ? (
+                                    <div style={{display:'flex', gap:'0.35rem', marginBottom:'0.3rem'}} onClick={e => e.stopPropagation()}>
+                                        <input
+                                            className="form-input"
+                                            value={renameValue}
+                                            onChange={e => setRenameValue(e.target.value)}
+                                            onKeyDown={e => { if (e.key === 'Enter') handleRenameSave(trip.id); if (e.key === 'Escape') setRenamingTrip(null); }}
+                                            style={{flex:1, padding:'0.4rem 0.6rem', fontSize:'0.9rem', background:'rgba(255,255,255,0.9)', color:'var(--text)', borderRadius:'6px', border:'none'}}
+                                            autoFocus
+                                        />
+                                        <button style={{background:'rgba(47,111,78,0.85)', border:'none', borderRadius:'6px', color:'white', cursor:'pointer', padding:'0.3rem 0.6rem', fontSize:'0.85rem'}} onClick={e => handleRenameSave(trip.id, e)}>✓</button>
+                                        <button style={{background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'6px', color:'white', cursor:'pointer', padding:'0.3rem 0.6rem', fontSize:'0.85rem'}} onClick={e => { e.stopPropagation(); setRenamingTrip(null); }}>✕</button>
+                                    </div>
+                                ) : (
+                                    <div style={{display:'flex', alignItems:'center', gap:'0.4rem', marginBottom:'0.1rem'}}>
+                                        <div className="tc-name" style={{marginBottom:0, flex:1}}>{trip.name}</div>
+                                        <button
+                                            style={{background:'rgba(255,255,255,0.15)', border:'none', borderRadius:'5px', color:'rgba(255,255,255,0.8)', cursor:'pointer', padding:'0.2rem 0.4rem', fontSize:'0.75rem', flexShrink:0, lineHeight:1}}
+                                            onClick={e => handleRenameStart(trip, e)}
+                                            title="Byt namn"
+                                        >✏️</button>
+                                    </div>
+                                )}
                                 <div className="tc-meta">
                                     {count} {count === 1 ? 'utgift' : 'utgifter'}
                                     {hasBudget ? ` · Budget: ${Number(trip.budget).toFixed(0)} kr` : ''}
+                                    {hasNotes && ' · 📋'}
                                 </div>
                                 {hasBudget && (() => {
                                     const pct = Math.min(100, (total / trip.budget) * 100);
@@ -1038,13 +1129,16 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
                                 })()}
                                 <div className="tc-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</div>
                                 <div className="tc-actions" onClick={e => e.stopPropagation()}>
-                                    {hasPlanned && (
+                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.35rem'}}>
+                                        {hasPlanned && (
+                                            <button className="btn btn-secondary btn-small" style={{justifyContent:'center', fontSize:'0.82rem'}} onClick={() => setSightsPanelTrip(trip)}>📍 Besöksmål</button>
+                                        )}
                                         <button
                                             className="btn btn-secondary btn-small"
-                                            style={{justifyContent:'center', fontSize:'0.82rem'}}
-                                            onClick={() => setSightsPanelTrip(trip)}
-                                        >📍 Besöksmål</button>
-                                    )}
+                                            style={{justifyContent:'center', fontSize:'0.82rem', gridColumn: hasPlanned ? 'auto' : '1/-1'}}
+                                            onClick={e => handleNotesOpen(trip, e)}
+                                        >{hasNotes ? '📋 Anteckningar ●' : '📋 Anteckningar'}</button>
+                                    </div>
                                     <button
                                         className="btn btn-primary btn-small"
                                         style={{width:'100%', justifyContent:'center', fontSize:'0.85rem'}}
@@ -1337,6 +1431,7 @@ function App() {
                         onDeleteExpense={handleDeleteExpense}
                         onUpdateExpense={handleUpdateExpense}
                         onNewPlannedTrip={handleNewPlannedTrip}
+                        onUpdateTrip={handleUpdateTrip}
                     />
                 )}
 
@@ -1355,6 +1450,285 @@ function App() {
                         onDeleteExpense={handleDeleteExpense}
                     />
                 )}
+            </div>
+        </div>
+    );
+}
+
+// ── RESA SAMMANFATTNING MODAL ─────────────────────────────
+function TripSummaryModal({ trip, expenses, categories, users, onClose }) {
+    const total = expenses.reduce((s, e) => s + e.amount * e.exchange_rate, 0);
+    const hasBudget = trip.budget && trip.budget > 0;
+    const diff = hasBudget ? trip.budget - total : null;
+    const underBudget = diff !== null && diff >= 0;
+
+    const catTotals = categories.map(cat => ({
+        ...cat,
+        total: expenses.filter(e => e.category === cat.id).reduce((s, e) => s + e.amount * e.exchange_rate, 0),
+        count: expenses.filter(e => e.category === cat.id).length
+    })).filter(c => c.total > 0).sort((a, b) => b.total - a.total);
+
+    const top5 = [...expenses].sort((a, b) => (b.amount * b.exchange_rate) - (a.amount * a.exchange_rate)).slice(0, 5);
+
+    const getUserName = (uid) => users.find(u => u.id === uid)?.name || 'Okänd';
+
+    const days = (() => {
+        if (!trip.start_date || !trip.end_date) return null;
+        return Math.max(1, Math.ceil((new Date(trip.end_date) - new Date(trip.start_date)) / 86400000));
+    })();
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'600px', maxHeight:'90vh', overflowY:'auto'}}>
+                {/* Header with trip image tint */}
+                <div style={{
+                    background: `linear-gradient(135deg, var(--primary) 0%, #1a3a2a 100%)`,
+                    borderRadius:'12px', padding:'1.5rem', marginBottom:'1.5rem', color:'white', position:'relative', overflow:'hidden'
+                }}>
+                    <div style={{fontSize:'2.5rem', marginBottom:'0.4rem'}}>{getTripFlag(trip.name)}</div>
+                    <h2 style={{fontWeight:800, fontSize:'1.4rem', marginBottom:'0.25rem'}}>{trip.name}</h2>
+                    <div style={{fontSize:'0.85rem', opacity:0.8}}>
+                        {expenses.length} utgifter
+                        {days && ` · ${days} dagar`}
+                        {trip.start_date && ` · ${new Date(trip.start_date).toLocaleDateString('sv-SE')}`}
+                        {trip.end_date && ` – ${new Date(trip.end_date).toLocaleDateString('sv-SE')}`}
+                    </div>
+                    <div style={{marginTop:'1rem', display:'flex', gap:'1.5rem', flexWrap:'wrap'}}>
+                        <div>
+                            <div style={{fontFamily:'Space Mono, monospace', fontSize:'1.8rem', fontWeight:700}}>{total.toFixed(0)} kr</div>
+                            <div style={{fontSize:'0.75rem', opacity:0.75}}>TOTALT SPENDERAT</div>
+                        </div>
+                        {hasBudget && (
+                            <div>
+                                <div style={{fontFamily:'Space Mono, monospace', fontSize:'1.8rem', fontWeight:700, color: underBudget ? '#a5d6a7' : '#ef9a9a'}}>
+                                    {underBudget ? '+' : ''}{diff.toFixed(0)} kr
+                                </div>
+                                <div style={{fontSize:'0.75rem', opacity:0.75}}>{underBudget ? 'UNDER BUDGET' : 'ÖVER BUDGET'}</div>
+                            </div>
+                        )}
+                        {days && expenses.length > 0 && (
+                            <div>
+                                <div style={{fontFamily:'Space Mono, monospace', fontSize:'1.8rem', fontWeight:700}}>{(total / days).toFixed(0)} kr</div>
+                                <div style={{fontSize:'0.75rem', opacity:0.75}}>PER DAG</div>
+                            </div>
+                        )}
+                    </div>
+                    {hasBudget && (
+                        <div style={{marginTop:'1rem'}}>
+                            <div style={{height:'6px', background:'rgba(255,255,255,0.2)', borderRadius:'3px', overflow:'hidden'}}>
+                                <div style={{
+                                    height:'100%', borderRadius:'3px',
+                                    width:`${Math.min(100, (total / trip.budget) * 100)}%`,
+                                    background: underBudget ? '#4caf50' : '#f44336',
+                                    transition:'width 0.8s ease'
+                                }} />
+                            </div>
+                            <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.72rem', opacity:0.7, marginTop:'0.3rem'}}>
+                                <span>0 kr</span><span>Budget: {Number(trip.budget).toFixed(0)} kr</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Per kategori */}
+                {catTotals.length > 0 && (
+                    <div style={{marginBottom:'1.5rem'}}>
+                        <h3 style={{fontWeight:700, fontSize:'1rem', color:'var(--primary)', marginBottom:'0.75rem'}}>📊 Per kategori</h3>
+                        <div style={{display:'flex', flexDirection:'column', gap:'0.5rem'}}>
+                            {catTotals.map(cat => {
+                                const pct = total > 0 ? (cat.total / total) * 100 : 0;
+                                return (
+                                    <div key={cat.id} style={{display:'flex', alignItems:'center', gap:'0.75rem'}}>
+                                        <span style={{width:'28px', textAlign:'center', fontSize:'1.1rem'}}>{cat.icon}</span>
+                                        <div style={{flex:1}}>
+                                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.2rem'}}>
+                                                <span style={{fontSize:'0.88rem', fontWeight:500}}>{cat.name}</span>
+                                                <span style={{fontFamily:'Space Mono, monospace', fontSize:'0.85rem', fontWeight:700}}>{cat.total.toFixed(0)} kr</span>
+                                            </div>
+                                            <div style={{height:'4px', background:'var(--border)', borderRadius:'2px', overflow:'hidden'}}>
+                                                <div style={{height:'100%', width:`${pct}%`, background:'var(--primary)', borderRadius:'2px'}} />
+                                            </div>
+                                            <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'0.15rem'}}>{pct.toFixed(0)}% · {cat.count} utgifter</div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Top 5 */}
+                {top5.length > 0 && (
+                    <div style={{marginBottom:'1.5rem'}}>
+                        <h3 style={{fontWeight:700, fontSize:'1rem', color:'var(--primary)', marginBottom:'0.75rem'}}>💸 Största utgifterna</h3>
+                        <div style={{display:'flex', flexDirection:'column', gap:'0.4rem'}}>
+                            {top5.map((e, i) => {
+                                const cat = categories.find(c => c.id === e.category) || { icon:'📌' };
+                                return (
+                                    <div key={e.id} style={{display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.6rem 0.75rem', background:'var(--bg)', borderRadius:'8px'}}>
+                                        <span style={{fontFamily:'Space Mono, monospace', fontSize:'0.75rem', color:'var(--text-muted)', width:'18px'}}>{i+1}.</span>
+                                        <span style={{fontSize:'1rem'}}>{cat.icon}</span>
+                                        <span style={{flex:1, fontSize:'0.88rem', fontWeight:500}}>{e.description}</span>
+                                        <span style={{fontFamily:'Space Mono, monospace', fontWeight:700, fontSize:'0.88rem'}}>{(e.amount * e.exchange_rate).toFixed(0)} kr</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                <div style={{display:'flex', gap:'0.75rem'}}>
+                    <button className="btn btn-secondary" style={{flex:1}} onClick={onClose}>Stäng</button>
+                    <button className="btn btn-primary" style={{flex:1}} onClick={() => { onClose(); setTimeout(() => window.dispatchEvent(new CustomEvent('openExport', { detail: { trip, expenses, categories, users } })), 100); }}>
+                        📤 Exportera
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── EXPORT MODAL ──────────────────────────────────────────
+function TripExportModal({ trip, expenses, categories, users, onClose }) {
+    const getUserName = (uid) => users.find(u => u.id === uid)?.name || 'Okänd';
+    const total = expenses.reduce((s, e) => s + e.amount * e.exchange_rate, 0);
+    const catTotals = categories.map(cat => ({
+        ...cat,
+        total: expenses.filter(e => e.category === cat.id).reduce((s, e) => s + e.amount * e.exchange_rate, 0)
+    })).filter(c => c.total > 0).sort((a, b) => b.total - a.total);
+
+    const exportCSV = () => {
+        const rows = [
+            ['Datum','Beskrivning','Kategori','Belopp (original)','Valuta','Belopp (SEK)','Tillagd av','Anteckning'],
+            ...expenses.map(e => {
+                const cat = categories.find(c => c.id === e.category)?.name || e.category;
+                return [
+                    new Date(e.date).toLocaleDateString('sv-SE'),
+                    e.description,
+                    cat,
+                    e.amount.toFixed(2),
+                    e.currency,
+                    (e.amount * e.exchange_rate).toFixed(2),
+                    getUserName(e.added_by),
+                    e.note || ''
+                ];
+            })
+        ];
+        const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `${trip.name.replace(/\s+/g,'-')}-utgifter.csv`; a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const exportPDF = () => {
+        const printWin = window.open('', '_blank');
+        const flag = getTripFlag(trip.name);
+        const totalSEK = expenses.reduce((s, e) => s + e.amount * e.exchange_rate, 0);
+        const hasBudget = trip.budget && trip.budget > 0;
+        const underBudget = hasBudget && totalSEK <= trip.budget;
+
+        const catRows = catTotals.map(cat => `
+            <tr>
+                <td>${cat.icon} ${cat.name}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:700">${cat.total.toFixed(0)} kr</td>
+                <td style="text-align:right;color:#666">${totalSEK > 0 ? ((cat.total/totalSEK)*100).toFixed(0) : 0}%</td>
+            </tr>`).join('');
+
+        const expRows = expenses.map((e, i) => {
+            const cat = categories.find(c => c.id === e.category) || { icon:'📌', name: e.category };
+            return `<tr style="background:${i%2===0?'#f9fdf9':'white'}">
+                <td style="color:#666">${new Date(e.date).toLocaleDateString('sv-SE')}</td>
+                <td><strong>${e.description}</strong>${e.note ? `<br><small style="color:#888">${e.note}</small>` : ''}</td>
+                <td>${cat.icon} ${cat.name}</td>
+                <td style="text-align:right;color:#666">${e.amount.toFixed(0)} ${e.currency}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:700">${(e.amount*e.exchange_rate).toFixed(0)} kr</td>
+            </tr>`;
+        }).join('');
+
+        printWin.document.write(`<!DOCTYPE html><html><head>
+            <meta charset="UTF-8">
+            <title>${trip.name} – Utgiftsrapport</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+            <style>
+                * { margin:0; padding:0; box-sizing:border-box; }
+                body { font-family:'Inter',sans-serif; background:white; color:#1F2D26; padding:40px; max-width:800px; margin:0 auto; }
+                .cover { background:linear-gradient(135deg,#2F6F4E,#1a3a2a); color:white; border-radius:16px; padding:2rem; margin-bottom:2rem; }
+                .cover h1 { font-size:2rem; font-weight:800; margin-bottom:0.25rem; }
+                .cover .meta { font-size:0.85rem; opacity:0.75; margin-bottom:1.25rem; }
+                .stats { display:flex; gap:2rem; flex-wrap:wrap; }
+                .stat { }
+                .stat-val { font-family:monospace; font-size:1.6rem; font-weight:700; }
+                .stat-label { font-size:0.7rem; opacity:0.7; text-transform:uppercase; letter-spacing:.05em; }
+                .section { margin-bottom:2rem; }
+                .section h2 { font-size:1rem; font-weight:700; color:#2F6F4E; border-bottom:2px solid #E6F2EC; padding-bottom:0.5rem; margin-bottom:1rem; }
+                table { width:100%; border-collapse:collapse; font-size:0.88rem; }
+                th { background:#2F6F4E; color:white; padding:0.6rem 0.75rem; text-align:left; font-weight:600; }
+                td { padding:0.55rem 0.75rem; border-bottom:1px solid #E6F2EC; vertical-align:top; }
+                .budget-bar { height:8px; background:#E6F2EC; border-radius:4px; margin-top:1rem; overflow:hidden; }
+                .budget-fill { height:100%; border-radius:4px; background:${underBudget?'#4caf50':'#f44336'}; width:${Math.min(100,(totalSEK/(trip.budget||1))*100).toFixed(0)}%; }
+                .footer { margin-top:3rem; padding-top:1rem; border-top:1px solid #C8DDD3; text-align:center; font-size:0.75rem; color:#888; }
+                @media print { body { padding:20px; } .no-print { display:none; } }
+            </style>
+        </head><body>
+            <div class="cover">
+                <div style="font-size:2.5rem;margin-bottom:0.5rem">${flag}</div>
+                <h1>${trip.name}</h1>
+                <div class="meta">
+                    ${expenses.length} utgifter
+                    ${trip.start_date ? ' · ' + new Date(trip.start_date).toLocaleDateString('sv-SE') : ''}
+                    ${trip.end_date ? ' – ' + new Date(trip.end_date).toLocaleDateString('sv-SE') : ''}
+                    · Exporterad ${new Date().toLocaleDateString('sv-SE')}
+                </div>
+                <div class="stats">
+                    <div class="stat"><div class="stat-val">${totalSEK.toFixed(0)} kr</div><div class="stat-label">Totalt spenderat</div></div>
+                    ${hasBudget ? `<div class="stat"><div class="stat-val" style="color:${underBudget?'#a5d6a7':'#ef9a9a'}">${(trip.budget - totalSEK).toFixed(0)} kr</div><div class="stat-label">${underBudget?'Under budget':'Över budget'}</div></div>` : ''}
+                </div>
+                ${hasBudget ? `<div class="budget-bar"><div class="budget-fill"></div></div>` : ''}
+            </div>
+
+            <div class="section">
+                <h2>Per kategori</h2>
+                <table><thead><tr><th>Kategori</th><th style="text-align:right">Belopp</th><th style="text-align:right">Andel</th></tr></thead>
+                <tbody>${catRows}</tbody></table>
+            </div>
+
+            <div class="section">
+                <h2>Alla utgifter</h2>
+                <table><thead><tr><th>Datum</th><th>Beskrivning</th><th>Kategori</th><th style="text-align:right">Original</th><th style="text-align:right">SEK</th></tr></thead>
+                <tbody>${expRows}</tbody>
+                <tfoot><tr style="background:#2F6F4E;color:white"><td colspan="4" style="font-weight:700;padding:0.6rem 0.75rem">TOTALT</td><td style="text-align:right;font-family:monospace;font-weight:700;padding:0.6rem 0.75rem">${totalSEK.toFixed(0)} kr</td></tr></tfoot>
+                </table>
+            </div>
+
+            <div class="footer">Våra resor · Exporterad ${new Date().toLocaleString('sv-SE')}</div>
+
+            <script>setTimeout(() => { window.print(); }, 400);<\/script>
+        </body></html>`);
+        printWin.document.close();
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'420px'}}>
+                <div className="modal-header">
+                    <span className="modal-title">📤 Exportera — {trip.name}</span>
+                    <button className="close-btn" onClick={onClose}>×</button>
+                </div>
+                <p style={{fontSize:'0.88rem', color:'var(--text-muted)', marginBottom:'1.25rem'}}>
+                    {expenses.length} utgifter · {expenses.reduce((s,e) => s + e.amount * e.exchange_rate, 0).toFixed(0)} kr totalt
+                </p>
+                <div style={{display:'flex', flexDirection:'column', gap:'0.75rem'}}>
+                    <button className="btn btn-primary" style={{justifyContent:'center', fontSize:'1rem', padding:'0.9rem'}} onClick={exportPDF}>
+                        🖨️ Exportera som PDF
+                        <span style={{fontSize:'0.75rem', opacity:0.75, fontWeight:400, marginLeft:'0.3rem'}}>— snygg rapport som öppnas i nytt fönster</span>
+                    </button>
+                    <button className="btn btn-secondary" style={{justifyContent:'center', fontSize:'1rem', padding:'0.9rem'}} onClick={exportCSV}>
+                        📊 Ladda ner CSV
+                        <span style={{fontSize:'0.75rem', opacity:0.75, fontWeight:400, marginLeft:'0.3rem'}}>— öppna i Excel eller Google Sheets</span>
+                    </button>
+                </div>
+                <button className="btn btn-secondary" style={{width:'100%', justifyContent:'center', marginTop:'1rem'}} onClick={onClose}>Avbryt</button>
             </div>
         </div>
     );
@@ -1745,6 +2119,15 @@ function CompletedTripsView({ trips, allExpenses, users, currentUser, categories
     const [confirm, setConfirm] = useState(null);
     const [expandedTrip, setExpandedTrip] = useState(null);
     const [expenseView, setExpenseView] = useState('list');
+    const [summaryTrip, setSummaryTrip] = useState(null);
+    const [exportTrip, setExportTrip] = useState(null);
+
+    // Listen for export events from TripSummaryModal
+    React.useEffect(() => {
+        const handler = (e) => setExportTrip(e.detail);
+        window.addEventListener('openExport', handler);
+        return () => window.removeEventListener('openExport', handler);
+    }, []);
 
     // Add-expense form state per expanded trip
     const [description, setDescription] = useState('');
@@ -1804,6 +2187,26 @@ function CompletedTripsView({ trips, allExpenses, users, currentUser, categories
                 />
             )}
 
+            {summaryTrip && (
+                <TripSummaryModal
+                    trip={summaryTrip}
+                    expenses={allExpenses.filter(e => e.trip_id === summaryTrip.id)}
+                    categories={categories}
+                    users={users}
+                    onClose={() => setSummaryTrip(null)}
+                />
+            )}
+
+            {exportTrip && (
+                <TripExportModal
+                    trip={exportTrip.trip}
+                    expenses={exportTrip.expenses}
+                    categories={exportTrip.categories}
+                    users={exportTrip.users}
+                    onClose={() => setExportTrip(null)}
+                />
+            )}
+
             <div className="trip-cards-grid" style={{marginBottom:'2rem'}}>
                 {trips.map(trip => {
                     const count = allExpenses.filter(e => e.trip_id === trip.id).length;
@@ -1840,6 +2243,11 @@ function CompletedTripsView({ trips, allExpenses, users, currentUser, categories
                                 )}
                                 <div className="tc-total">{total > 0 ? `${total.toFixed(0)} kr` : '–'}</div>
                                 <div className="tc-actions">
+                                    <button
+                                        className="btn btn-primary btn-small"
+                                        style={{width:'100%', justifyContent:'center', fontSize:'0.82rem'}}
+                                        onClick={() => setSummaryTrip(trip)}
+                                    >📊 Sammanfattning</button>
                                     <div style={{display:'flex', gap:'0.35rem'}}>
                                         <button
                                             className="btn btn-secondary btn-small"
@@ -1865,10 +2273,13 @@ function CompletedTripsView({ trips, allExpenses, users, currentUser, categories
                     <div className="card" style={{marginBottom:'2rem'}}>
                         <div className="card-header">
                             <h3 className="card-title">{trip.name} — utgifter</h3>
-                            <div className="view-toggle">
-                                <span className="view-toggle-label">Visa:</span>
-                                <button className={`toggle-btn ${expenseView==='list'?'active':''}`} onClick={() => setExpenseView('list')}>Lista</button>
-                                <button className={`toggle-btn ${expenseView==='day'?'active':''}`} onClick={() => setExpenseView('day')}>Per dag</button>
+                            <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
+                                <button className="btn btn-secondary btn-small" style={{fontSize:'0.8rem'}} onClick={() => setExportTrip({ trip, expenses: tripExpenses, categories, users })}>📤 Exportera</button>
+                                <div className="view-toggle">
+                                    <span className="view-toggle-label">Visa:</span>
+                                    <button className={`toggle-btn ${expenseView==='list'?'active':''}`} onClick={() => setExpenseView('list')}>Lista</button>
+                                    <button className={`toggle-btn ${expenseView==='day'?'active':''}`} onClick={() => setExpenseView('day')}>Per dag</button>
+                                </div>
                             </div>
                         </div>
 
@@ -1968,7 +2379,7 @@ function Header({ user, onLogout, onAdminClick }) {
     return (
         <header className="header">
             <div className="logo">✈️ Våra resor</div>
-            <div className="user-info">
+            <div className="user-info" style={{marginTop:'0.6rem'}}>
                 {user.is_admin ? (
                     <span className="user-badge admin-badge" onClick={onAdminClick} title="Öppna adminpanelen">
                         {user.name} (Admin) ⚙️
@@ -1983,7 +2394,7 @@ function Header({ user, onLogout, onAdminClick }) {
 }
 
 // ── UTGIFTSVY ─────────────────────────────────────────────
-function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onAddExpense, onDeleteExpense, onUpdateExpense, onNewPlannedTrip }) {
+function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onAddExpense, onDeleteExpense, onUpdateExpense, onNewPlannedTrip, onUpdateTrip }) {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [currency, setCurrency] = useState('SEK');
@@ -1995,6 +2406,7 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
     const [confirm, setConfirm] = useState(null);
     const [expenseView, setExpenseView] = useState('list');
     const [editingExpense, setEditingExpense] = useState(null); // expense being edited
+    const [exportData, setExportData] = useState(null);
 
     const { getCurrencies, ratesUpdated } = useLiveRates();
     const CURRENCIES = getCurrencies();
@@ -2078,6 +2490,17 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                 />
             )}
 
+            {/* EXPORT MODAL */}
+            {exportData && (
+                <TripExportModal
+                    trip={exportData.trip}
+                    expenses={exportData.expenses}
+                    categories={exportData.categories}
+                    users={exportData.users}
+                    onClose={() => setExportData(null)}
+                />
+            )}
+
             {/* REDIGERA UTGIFT MODAL */}
             {editingExpense && (
                 <div className="modal-overlay" onClick={() => setEditingExpense(null)}>
@@ -2147,6 +2570,7 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                 onCompleteTrip={(id, name) => setConfirm({ type:'complete', id, name })}
                 onUnplanTrip={(id, name) => setConfirm({ type:'unplan', id, name })}
                 onNewPlannedTrip={onNewPlannedTrip}
+                onUpdateTrip={onUpdateTrip}
             />
 
             {!selectedTrip ? (
@@ -2256,13 +2680,18 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                     <div className="card">
                         <div className="card-header">
                             <h3 className="card-title">Alla utgifter</h3>
-                            {expenses.length > 0 && (
-                                <div className="view-toggle">
-                                    <span className="view-toggle-label">Visa:</span>
-                                    <button className={`toggle-btn ${expenseView==='list'?'active':''}`} onClick={() => setExpenseView('list')}>Lista</button>
-                                    <button className={`toggle-btn ${expenseView==='day'?'active':''}`} onClick={() => setExpenseView('day')}>Per dag</button>
-                                </div>
-                            )}
+                            <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
+                                {expenses.length > 0 && selectedTripObj && (
+                                    <button className="btn btn-secondary btn-small" style={{fontSize:'0.8rem'}} onClick={() => setExportData({ trip: selectedTripObj, expenses, categories, users })}>📤 Exportera</button>
+                                )}
+                                {expenses.length > 0 && (
+                                    <div className="view-toggle">
+                                        <span className="view-toggle-label">Visa:</span>
+                                        <button className={`toggle-btn ${expenseView==='list'?'active':''}`} onClick={() => setExpenseView('list')}>Lista</button>
+                                        <button className={`toggle-btn ${expenseView==='day'?'active':''}`} onClick={() => setExpenseView('day')}>Per dag</button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {expenses.length === 0 ? (
