@@ -979,21 +979,6 @@ function TripCardShell({ trip, badge, selected, onClick, children }) {
 function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onNewPlannedTrip }) {
     const [sightsPanelTrip, setSightsPanelTrip] = useState(null);
 
-    const handleAddTrip = async (e) => {
-        e.preventDefault();
-        if (!newTripName.trim()) return;
-        await onAddTrip({
-            name: newTripName.trim(),
-            budget: newTripBudget ? parseFloat(newTripBudget) : null,
-            start_date: newTripStartDate || null,
-            end_date: newTripEndDate || null,
-            is_completed: false,
-            created_at: new Date().toISOString()
-        });
-        setNewTripName(''); setNewTripBudget(''); setNewTripStartDate(''); setNewTripEndDate('');
-        setShowNewTrip(false);
-    };
-
     const getTripTotal = (tripId) => {
         return allExpenses
             .filter(e => e.trip_id === tripId)
@@ -1259,6 +1244,8 @@ function App() {
             setAutoEditTrip(newTrip);
         }
     };
+
+    const handleDeleteExpense = async (id) => {
         const { error } = await supabase.from('expenses').delete().eq('id', id);
         if (!error) setExpenses(expenses.filter(e => e.id !== id));
     };
