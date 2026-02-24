@@ -1454,6 +1454,7 @@ function App() {
                     <button className={`tab ${activeTab==='planned'?'active':''}`} onClick={() => setActiveTab('planned')}>🗓 Planerade Resor</button>
                     <button className={`tab ${activeTab==='expenses'?'active':''}`} onClick={() => setActiveTab('expenses')}>💸 Pågående Resa</button>
                     <button className={`tab ${activeTab==='history'?'active':''}`} onClick={() => setActiveTab('history')}>📂 Avslutade Resor</button>
+                    <button className={`tab ${activeTab==='inspire'?'active':''}`} onClick={() => setActiveTab('inspire')}>✨ Inspirera mig</button>
                 </div>
 
                 {activeTab === 'planned' && (
@@ -1507,7 +1508,358 @@ function App() {
                         onDeleteExpense={handleDeleteExpense}
                     />
                 )}
+
+                {activeTab === 'inspire' && (
+                    <InspireView
+                        onSaveTrip={async (trip) => {
+                            const saved = await handleAddTrip({
+                                name: trip.destination,
+                                budget: trip.estimatedBudget || null,
+                                plan_data: JSON.stringify(trip.destinations || []),
+                                is_planned: true,
+                                is_completed: false,
+                                created_at: new Date().toISOString()
+                            });
+                            if (saved) { setAutoEditTrip(saved); setActiveTab('planned'); }
+                        }}
+                    />
+                )}
             </div>
+        </div>
+    );
+}
+
+// ── INSPIRERA MIG ─────────────────────────────────────────
+function InspireView({ onSaveTrip }) {
+    const [criteria, setCriteria] = useState({
+        tripType: [],
+        climate: [],
+        duration: '',
+        budget: '',
+        companions: '',
+        continent: [],
+        vibe: []
+    });
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState(null);
+    const [error, setError] = useState(null);
+    const [saved, setSaved] = useState(false);
+
+    const toggle = (key, val) => setCriteria(c => ({
+        ...c,
+        [key]: c[key].includes(val) ? c[key].filter(x => x !== val) : [...c[key], val]
+    }));
+
+    const Chip = ({ label, active, onClick }) => (
+        <button
+            onClick={onClick}
+            style={{
+                padding: '0.45rem 1rem', borderRadius: '20px', border: '2px solid',
+                borderColor: active ? 'var(--primary)' : 'var(--border)',
+                background: active ? 'var(--primary)' : 'white',
+                color: active ? 'white' : 'var(--text)',
+                fontSize: '0.88rem', fontWeight: 500, cursor: 'pointer',
+                transition: 'all 0.15s', fontFamily: 'Inter, sans-serif'
+            }}
+        >{label}</button>
+    );
+
+    const Section = ({ title, children }) => (
+        <div style={{marginBottom: '1.25rem'}}>
+            <div style={{fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.6rem'}}>{title}</div>
+            <div style={{display: 'flex', flexWrap: 'wrap', gap: '0.5rem'}}>{children}</div>
+        </div>
+    );
+
+    const generate = async () => {
+        setLoading(true);
+        setResult(null);
+        setError(null);
+        setSaved(false);
+
+        const criteriaText = [
+            criteria.tripType.length && `Typ av resa: ${criteria.tripType.join(', ')}`,
+            criteria.climate.length && `Klimat: ${criteria.climate.join(', ')}`,
+            criteria.duration && `Längd: ${criteria.duration}`,
+            criteria.budget && `Budget: ${criteria.budget}`,
+            criteria.companions && `Resesällskap: ${criteria.companions}`,
+            criteria.continent.length && `Kontinent/region: ${criteria.continent.join(', ')}`,
+            criteria.vibe.length && `Känsla: ${criteria.vibe.join(', ')}`
+        ].filter(Boolean).join('\n');
+
+        const prompt = `Du är en erfaren reseplanerare. Baserat på följande kriterier, föreslå EN specifik resdestination.
+
+Kriterier:
+${criteriaText || 'Inga specifika kriterier angivna – slumpa något intressant!'}
+
+Svara ENBART med ett JSON-objekt i exakt detta format, utan markdown-backticks:
+{
+  "destination": "Stadsnamn, Land",
+  "country": "Landets namn",
+  "tagline": "En mening som fångar essensen av resan",
+  "why": "2-3 meningar om varför denna destination passar kriterierna",
+  "bestTime": "Bästa tid att besöka",
+  "estimatedBudget": 25000,
+  "days": 10,
+  "highlights": [
+    { "name": "Besöksmålsnamn", "description": "Kort beskrivning", "mapQuery": "Sökterm för Google Maps" },
+    { "name": "Besöksmålsnamn", "description": "Kort beskrivning", "mapQuery": "Sökterm för Google Maps" },
+    { "name": "Besöksmålsnamn", "description": "Kort beskrivning", "mapQuery": "Sökterm för Google Maps" },
+    { "name": "Besöksmålsnamn", "description": "Kort beskrivning", "mapQuery": "Sökterm för Google Maps" }
+  ],
+  "restaurants": [
+    { "name": "Restaurangnamn", "type": "Typ av mat", "priceLevel": "€€", "tip": "Kort tips" },
+    { "name": "Restaurangnamn", "type": "Typ av mat", "priceLevel": "€", "tip": "Kort tips" },
+    { "name": "Restaurangnamn", "type": "Typ av mat", "priceLevel": "€€€", "tip": "Kort tips" }
+  ],
+  "accommodation": [
+    { "name": "Hotell/Boende", "type": "Typ", "priceLevel": "Budget/Mellan/Lyx", "area": "Område i staden", "tip": "Kort tips" },
+    { "name": "Hotell/Boende", "type": "Typ", "priceLevel": "Budget/Mellan/Lyx", "area": "Område", "tip": "Kort tips" },
+    { "name": "Hotell/Boende", "type": "Typ", "priceLevel": "Budget/Mellan/Lyx", "area": "Område", "tip": "Kort tips" }
+  ],
+  "practicalTips": ["Tips 1", "Tips 2", "Tips 3"],
+  "mapQuery": "Destinationsnamn för Google Maps-sökning"
+}`;
+
+        try {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 1500,
+                    messages: [{ role: 'user', content: prompt }]
+                })
+            });
+            const data = await response.json();
+            const text = data.content?.map(b => b.text || '').join('');
+            const clean = text.replace(/```json|```/g, '').trim();
+            const parsed = JSON.parse(clean);
+            setResult(parsed);
+        } catch (e) {
+            setError('Kunde inte hämta förslag. Försök igen.');
+        }
+        setLoading(false);
+    };
+
+    const handleSave = async () => {
+        if (!result) return;
+        const destinations = [{
+            id: Date.now(),
+            name: result.destination,
+            dateFrom: '', dateTo: '',
+            mapQuery: result.mapQuery || result.destination,
+            sights: result.highlights.map((h, i) => ({
+                id: Date.now() + i,
+                name: h.name,
+                note: h.description,
+                mapQuery: h.mapQuery || h.name,
+                link: ''
+            }))
+        }];
+        await onSaveTrip({ ...result, destinations, estimatedBudget: result.estimatedBudget });
+        setSaved(true);
+    };
+
+    const mapEmbedUrl = (q) => `https://maps.google.com/maps?q=${encodeURIComponent(q)}&output=embed`;
+    const mapDirectUrl = (q) => `https://www.google.com/maps/search/${encodeURIComponent(q)}`;
+
+    return (
+        <div style={{maxWidth: '900px', margin: '0 auto'}}>
+
+            {/* CRITERIA CARD */}
+            <div className="card" style={{marginBottom: '1.5rem'}}>
+                <h2 style={{fontWeight: 800, fontSize: '1.3rem', marginBottom: '0.25rem', color: 'var(--primary)'}}>✨ Inspirera mig</h2>
+                <p style={{fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem'}}>Välj vad som passar dig — eller lämna tomt för en riktig överraskning.</p>
+
+                <Section title="Typ av resa">
+                    {['Stad & kultur','Natur & äventyr','Strand & sol','Mat & gastronomi','Historia & arkeologi','Vintersport','Wellness & avkoppling','Roadtrip'].map(v => (
+                        <Chip key={v} label={v} active={criteria.tripType.includes(v)} onClick={() => toggle('tripType', v)} />
+                    ))}
+                </Section>
+
+                <Section title="Klimat">
+                    {['Varmt & soligt','Tropiskt','Tempererat','Kallt','Torrt ökenklimat'].map(v => (
+                        <Chip key={v} label={v} active={criteria.climate.includes(v)} onClick={() => toggle('climate', v)} />
+                    ))}
+                </Section>
+
+                <Section title="Reslängd">
+                    {['Weekend (2-3 dagar)','Kort (4-7 dagar)','Medel (1-2 veckor)','Lång (3-4 veckor)','Längre (1+ månad)'].map(v => (
+                        <Chip key={v} label={v} active={criteria.duration === v} onClick={() => setCriteria(c => ({...c, duration: c.duration === v ? '' : v}))} />
+                    ))}
+                </Section>
+
+                <Section title="Budget per person">
+                    {['Backpacker (under 10 000 kr)','Budget (10 000-20 000 kr)','Mellanklass (20 000-40 000 kr)','Lyx (40 000+ kr)'].map(v => (
+                        <Chip key={v} label={v} active={criteria.budget === v} onClick={() => setCriteria(c => ({...c, budget: c.budget === v ? '' : v}))} />
+                    ))}
+                </Section>
+
+                <Section title="Resesällskap">
+                    {['Solo','Par','Vänner','Familj med barn','Pensionärsresa'].map(v => (
+                        <Chip key={v} label={v} active={criteria.companions === v} onClick={() => setCriteria(c => ({...c, companions: c.companions === v ? '' : v}))} />
+                    ))}
+                </Section>
+
+                <Section title="Region / Kontinent">
+                    {['Europa','Sydostasien','Östasien','Sydamerika','Nordamerika','Mellanöstern','Afrika','Oceanien','Karibien'].map(v => (
+                        <Chip key={v} label={v} active={criteria.continent.includes(v)} onClick={() => toggle('continent', v)} />
+                    ))}
+                </Section>
+
+                <Section title="Känsla">
+                    {['Utforskande & äventyrlig','Lugn & avslappnad','Urban & energisk','Autentisk & off-the-beaten-track','Romantisk','Lekfull & festlig'].map(v => (
+                        <Chip key={v} label={v} active={criteria.vibe.includes(v)} onClick={() => toggle('vibe', v)} />
+                    ))}
+                </Section>
+
+                <div style={{display: 'flex', gap: '0.75rem', marginTop: '0.5rem'}}>
+                    <button
+                        className="btn btn-secondary btn-small"
+                        onClick={() => { setCriteria({ tripType:[], climate:[], duration:'', budget:'', companions:'', continent:[], vibe:[] }); setResult(null); setSaved(false); }}
+                    >↺ Återställ</button>
+                    <button
+                        className="btn btn-primary"
+                        style={{flex: 1, justifyContent: 'center', fontSize: '1rem'}}
+                        onClick={generate}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <span style={{display:'flex', alignItems:'center', gap:'0.6rem'}}>
+                                <span style={{display:'inline-block', width:'16px', height:'16px', border:'2px solid rgba(255,255,255,0.4)', borderTopColor:'white', borderRadius:'50%', animation:'spin 0.7s linear infinite'}} />
+                                Genererar förslag...
+                            </span>
+                        ) : '✨ Slumpa resa'}
+                    </button>
+                </div>
+                {error && <div className="alert alert-error" style={{marginTop:'0.75rem'}}>{error}</div>}
+            </div>
+
+            {/* RESULT */}
+            {result && (
+                <div>
+                    {/* HERO */}
+                    <div style={{
+                        background: 'linear-gradient(135deg, var(--primary) 0%, #1a3a2a 100%)',
+                        borderRadius: '16px', padding: '2rem', marginBottom: '1.5rem', color: 'white', position: 'relative', overflow: 'hidden'
+                    }}>
+                        <div style={{position:'absolute', top:'1rem', right:'1.5rem', fontSize:'4rem', opacity:0.15}}>{getTripFlag(result.destination)}</div>
+                        <div style={{fontSize:'2.5rem', marginBottom:'0.5rem'}}>{getTripFlag(result.destination)}</div>
+                        <h2 style={{fontWeight:800, fontSize:'1.8rem', marginBottom:'0.25rem'}}>{result.destination}</h2>
+                        <div style={{fontSize:'1rem', opacity:0.85, marginBottom:'1rem', fontStyle:'italic'}}>{result.tagline}</div>
+                        <p style={{fontSize:'0.92rem', opacity:0.9, lineHeight:1.7, marginBottom:'1.25rem', maxWidth:'600px'}}>{result.why}</p>
+                        <div style={{display:'flex', gap:'1.5rem', flexWrap:'wrap', fontSize:'0.85rem'}}>
+                            {result.bestTime && <div><span style={{opacity:0.65}}>📅 Bästa tid</span><div style={{fontWeight:600, marginTop:'0.1rem'}}>{result.bestTime}</div></div>}
+                            {result.days && <div><span style={{opacity:0.65}}>⏱ Rekommenderat</span><div style={{fontWeight:600, marginTop:'0.1rem'}}>{result.days} dagar</div></div>}
+                            {result.estimatedBudget && <div><span style={{opacity:0.65}}>💰 Uppskattad budget</span><div style={{fontWeight:600, marginTop:'0.1rem'}}>{Number(result.estimatedBudget).toLocaleString('sv-SE')} kr/person</div></div>}
+                        </div>
+                        <div style={{marginTop:'1.5rem', display:'flex', gap:'0.75rem', flexWrap:'wrap'}}>
+                            <button
+                                className="btn btn-secondary"
+                                style={{fontSize:'0.9rem'}}
+                                onClick={generate}
+                            >🔀 Nytt förslag</button>
+                            <button
+                                className="btn"
+                                style={{background: saved ? '#4caf50' : 'var(--accent)', color: 'white', fontSize:'0.9rem'}}
+                                onClick={handleSave}
+                                disabled={saved}
+                            >{saved ? '✓ Sparad som planerad resa!' : '📌 Spara som planerad resa'}</button>
+                        </div>
+                    </div>
+
+                    {/* KARTA */}
+                    <div className="card" style={{marginBottom:'1.5rem', padding:0, overflow:'hidden', borderRadius:'12px'}}>
+                        <div style={{padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                            <h3 style={{fontWeight:700, color:'var(--primary)', fontSize:'1rem'}}>🗺 {result.destination}</h3>
+                            <a href={mapDirectUrl(result.mapQuery || result.destination)} target="_blank" rel="noreferrer" className="btn btn-secondary btn-small" style={{fontSize:'0.8rem'}}>Öppna i Google Maps</a>
+                        </div>
+                        <iframe
+                            src={mapEmbedUrl(result.mapQuery || result.destination)}
+                            style={{width:'100%', height:'320px', display:'block', border:'none'}}
+                            allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"
+                            title={`Karta: ${result.destination}`}
+                        />
+                    </div>
+
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem'}}>
+
+                        {/* BESÖKSMÅL */}
+                        <div className="card">
+                            <h3 style={{fontWeight:700, color:'var(--primary)', marginBottom:'1rem', fontSize:'1rem'}}>📍 Besöksmål</h3>
+                            <div style={{display:'flex', flexDirection:'column', gap:'0.75rem'}}>
+                                {result.highlights?.map((h, i) => (
+                                    <div key={i} style={{display:'flex', gap:'0.75rem', padding:'0.75rem', background:'var(--bg)', borderRadius:'8px'}}>
+                                        <div style={{fontFamily:'Space Mono, monospace', fontSize:'0.75rem', color:'var(--text-muted)', fontWeight:700, minWidth:'20px', paddingTop:'2px'}}>{i+1}.</div>
+                                        <div>
+                                            <div style={{fontWeight:600, fontSize:'0.92rem', marginBottom:'0.2rem'}}>{h.name}</div>
+                                            <div style={{fontSize:'0.82rem', color:'var(--text-muted)', lineHeight:1.5}}>{h.description}</div>
+                                            {h.mapQuery && (
+                                                <a href={mapDirectUrl(h.mapQuery)} target="_blank" rel="noreferrer" style={{fontSize:'0.75rem', color:'var(--primary)', fontWeight:600, textDecoration:'none', marginTop:'0.25rem', display:'inline-block'}}>🗺 Visa på karta ↗</a>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* BOENDE */}
+                        <div className="card">
+                            <h3 style={{fontWeight:700, color:'var(--primary)', marginBottom:'1rem', fontSize:'1rem'}}>🏨 Boende</h3>
+                            <div style={{display:'flex', flexDirection:'column', gap:'0.75rem'}}>
+                                {result.accommodation?.map((a, i) => (
+                                    <div key={i} style={{padding:'0.75rem', background:'var(--bg)', borderRadius:'8px'}}>
+                                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.2rem'}}>
+                                            <div style={{fontWeight:600, fontSize:'0.92rem'}}>{a.name}</div>
+                                            <span style={{fontSize:'0.75rem', background: a.priceLevel==='Budget' ? '#e8f5e9' : a.priceLevel==='Lyx' ? '#fff3e0' : '#e3f2fd', color: a.priceLevel==='Budget' ? '#2e7d32' : a.priceLevel==='Lyx' ? '#e65100' : '#1565c0', borderRadius:'20px', padding:'0.15rem 0.6rem', fontWeight:600, whiteSpace:'nowrap', marginLeft:'0.5rem'}}>{a.priceLevel}</span>
+                                        </div>
+                                        <div style={{fontSize:'0.78rem', color:'var(--text-muted)', marginBottom:'0.2rem'}}>{a.type} · {a.area}</div>
+                                        <div style={{fontSize:'0.82rem', color:'var(--text)', lineHeight:1.5}}>{a.tip}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RESTAURANGER */}
+                    <div className="card" style={{marginBottom:'1.5rem'}}>
+                        <h3 style={{fontWeight:700, color:'var(--primary)', marginBottom:'1rem', fontSize:'1rem'}}>🍽️ Restauranger</h3>
+                        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'0.75rem'}}>
+                            {result.restaurants?.map((r, i) => (
+                                <div key={i} style={{padding:'0.9rem', background:'var(--bg)', borderRadius:'8px'}}>
+                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.25rem'}}>
+                                        <div style={{fontWeight:600, fontSize:'0.92rem'}}>{r.name}</div>
+                                        <span style={{fontFamily:'Space Mono, monospace', fontSize:'0.8rem', color:'var(--text-muted)'}}>{r.priceLevel}</span>
+                                    </div>
+                                    <div style={{fontSize:'0.78rem', color:'var(--primary)', fontWeight:600, marginBottom:'0.3rem'}}>{r.type}</div>
+                                    <div style={{fontSize:'0.82rem', color:'var(--text-muted)', lineHeight:1.5}}>{r.tip}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* PRAKTISKA TIPS */}
+                    {result.practicalTips?.length > 0 && (
+                        <div className="card" style={{marginBottom:'1.5rem'}}>
+                            <h3 style={{fontWeight:700, color:'var(--primary)', marginBottom:'1rem', fontSize:'1rem'}}>💡 Praktiska tips</h3>
+                            <div style={{display:'flex', flexDirection:'column', gap:'0.5rem'}}>
+                                {result.practicalTips.map((tip, i) => (
+                                    <div key={i} style={{display:'flex', gap:'0.75rem', alignItems:'flex-start', padding:'0.6rem 0.75rem', background:'var(--bg)', borderRadius:'8px'}}>
+                                        <span style={{color:'var(--accent)', fontWeight:700, flexShrink:0}}>→</span>
+                                        <span style={{fontSize:'0.88rem', lineHeight:1.6}}>{tip}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* DISCLAIMER */}
+                    <p style={{fontSize:'0.75rem', color:'var(--text-muted)', textAlign:'center', padding:'0 1rem 1.5rem'}}>
+                        ⚠️ Förslag genererade av AI — restauranger och boenden kan ha ändrats. Verifiera alltid aktuell information innan bokning.
+                    </p>
+                </div>
+            )}
         </div>
     );
 }
