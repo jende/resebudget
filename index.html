@@ -740,6 +740,7 @@
             .emoji-btn { min-width: 34px; min-height: 34px; }
             .add-link { padding: 0.5rem 0; font-size: 0.88rem; }
         }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
         /* ── PRINT ── */
         @media print {
             body { background: white !important; font-size: 11pt; }
@@ -999,221 +1000,274 @@ function SightMap({ query }) {
 
 // ── BESÖKSMÅL-PANEL (pågående resa, redigerbar) ───────────
 function SightsPanel({ trip, onClose, onUpdateTrip }) {
-    const [activeDest, setActiveDest] = useState(0);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [cardModal, setCardModal] = useState(null);
 
-    const [destinations, setDestinations] = useState(() => {
+    // Samma korttyper som planeraren
+    const CARD_TYPES = [
+        { id: 'sight',      label: 'Besöksmål',  icon: '📍' },
+        { id: 'hotel',      label: 'Boende',      icon: '🏨' },
+        { id: 'restaurant', label: 'Restaurang',  icon: '🍽️' },
+    ];
+
+    // Ladda befintliga kort från plan_data (sights på första destinationen)
+    const [cards, setCards] = useState(() => {
         try {
             const parsed = JSON.parse(trip.plan_data || '[]');
-            return parsed.length > 0 ? parsed : [makeDestination()];
-        } catch { return [makeDestination()]; }
+            const allSights = parsed.flatMap(d => (d.sights || []).map(s => ({
+                ...s,
+                type: s.type || 'sight',
+                checked: s.checked || false
+            })));
+            return allSights;
+        } catch { return []; }
     });
 
-    const dest = destinations[Math.min(activeDest, destinations.length - 1)];
-
-    const updateDest = (field, val) =>
-        setDestinations(ds => ds.map((d, i) => i === activeDest ? { ...d, [field]: val } : d));
-
-    const updateSight = (sIdx, field, val) =>
-        setDestinations(ds => ds.map((d, i) => i !== activeDest ? d : {
-            ...d, sights: d.sights.map((s, j) => j === sIdx ? { ...s, [field]: val } : s)
-        }));
-
-    const addDest = () => {
-        const nd = makeDestination();
-        setDestinations(ds => [...ds, nd]);
-        setActiveDest(destinations.length);
-    };
-
-    const removeDest = (idx) => {
-        setDestinations(ds => ds.filter((_, i) => i !== idx));
-        setActiveDest(a => Math.min(a, destinations.length - 2));
-    };
-
-    const addSight = () =>
-        setDestinations(ds => ds.map((d, i) => i !== activeDest ? d : { ...d, sights: [...(d.sights || []), makeSight()] }));
-
-    const removeSight = (sIdx) =>
-        setDestinations(ds => ds.map((d, i) => i !== activeDest ? d : { ...d, sights: d.sights.filter((_, j) => j !== sIdx) }));
+    const toggleChecked = (idx) =>
+        setCards(cs => cs.map((c, i) => i === idx ? { ...c, checked: !c.checked } : c));
 
     const handleSave = async () => {
         setSaving(true);
-        await onUpdateTrip(trip.id, { plan_data: JSON.stringify(destinations) });
+        // Spara tillbaka som en enda destination med alla kort
+        const existing = (() => { try { return JSON.parse(trip.plan_data || '[]'); } catch { return []; } })();
+        const base = existing[0] || { id: Date.now(), name: '', dateFrom:'', dateTo:'', mapQuery:'', accommodation:'', restaurants:'' };
+        const newPlanData = [{ ...base, sights: cards }];
+        await onUpdateTrip(trip.id, { plan_data: JSON.stringify(newPlanData) });
         setSaving(false);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     };
 
-    const mapEmbedUrl = (q) => q ? `https://maps.google.com/maps?q=${encodeURIComponent(q)}&output=embed` : null;
-    const mapDirectUrl = (q) => `https://www.google.com/maps/search/${encodeURIComponent(q)}`;
+    const openAddCard = () => setCardModal({ mode:'add', type:'sight', name:'', note:'', link:'', mapQuery:'' });
+    const openEditCard = (idx) => {
+        const c = cards[idx];
+        setCardModal({ mode:'edit', idx, type: c.type||'sight', name: c.name||'', note: c.note||'', link: c.link||'', mapQuery: c.mapQuery||'' });
+    };
+    const removeCard = (idx) => setCards(cs => cs.filter((_, i) => i !== idx));
+
+    const saveCard = () => {
+        if (!cardModal || !cardModal.name.trim()) return;
+        const { mode, idx, type, name, note, link, mapQuery } = cardModal;
+        if (mode === 'add') {
+            setCards(cs => [...cs, { id: Date.now(), type, name: name.trim(), note, link, mapQuery }]);
+        } else {
+            setCards(cs => cs.map((c, i) => i !== idx ? c : { ...c, type, name: name.trim(), note, link, mapQuery }));
+        }
+        setCardModal(null);
+    };
 
     return (
         <div className="planning-panel-overlay" onClick={onClose}>
+
+            {/* KORT MODAL */}
+            {cardModal && (
+                <div className="modal-overlay" onClick={() => setCardModal(null)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'420px'}}>
+                        <div className="modal-header">
+                            <span className="modal-title">{cardModal.mode === 'add' ? '+ Lägg till' : '✏️ Redigera'}</span>
+                            <button className="close-btn" onClick={() => setCardModal(null)}>×</button>
+                        </div>
+                        {/* Typ-väljare */}
+                        <div style={{display:'flex', gap:'0.5rem', marginBottom:'1.25rem'}}>
+                            {CARD_TYPES.map(t => (
+                                <button key={t.id} onClick={() => setCardModal(m => ({...m, type: t.id}))}
+                                    style={{
+                                        flex:1, padding:'0.65rem 0.5rem', borderRadius:'10px', border:'2px solid',
+                                        borderColor: cardModal.type === t.id ? 'var(--primary)' : 'var(--border-solid)',
+                                        background: cardModal.type === t.id ? 'var(--primary)' : 'rgba(255,255,255,0.8)',
+                                        color: cardModal.type === t.id ? 'white' : 'var(--text-muted)',
+                                        fontFamily:'DM Sans, sans-serif', fontWeight:700, fontSize:'0.82rem',
+                                        cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.25rem'
+                                    }}>
+                                    <span style={{fontSize:'1.3rem'}}>{t.icon}</span>
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Namn</label>
+                            <input className="form-input"
+                                placeholder={cardModal.type === 'hotel' ? 'Hotellnamn...' : cardModal.type === 'restaurant' ? 'Restaurangnamn...' : 'Besöksmålsnamn...'}
+                                value={cardModal.name}
+                                onChange={e => setCardModal(m => ({...m, name: e.target.value}))}
+                                autoFocus onKeyDown={e => e.key === 'Enter' && saveCard()} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Anteckning <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
+                            <textarea className="form-input" rows="3"
+                                style={{resize:'vertical', fontFamily:'inherit', fontSize:'0.9rem'}}
+                                placeholder={cardModal.type === 'hotel' ? 'Bokningsnummer, check-in-tid...' : cardModal.type === 'restaurant' ? 'Tips, öppettider, adress...' : 'Öppettider, tips, adress...'}
+                                value={cardModal.note}
+                                onChange={e => setCardModal(m => ({...m, note: e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Länk <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
+                            <input className="form-input" placeholder="https://..."
+                                value={cardModal.link} onChange={e => setCardModal(m => ({...m, link: e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Google Maps <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
+                            <input className="form-input" placeholder="t.ex. Wat Pho Bangkok..."
+                                value={cardModal.mapQuery||''} onChange={e => setCardModal(m => ({...m, mapQuery: e.target.value}))} />
+                            {!cardModal.mapQuery && cardModal.name && (
+                                <button type="button" onClick={() => setCardModal(m => ({...m, mapQuery: m.name}))}
+                                    style={{marginTop:'0.35rem', background:'none', border:'none', color:'var(--primary)', fontFamily:'DM Sans, sans-serif', fontSize:'0.8rem', fontWeight:700, cursor:'pointer', padding:0}}>
+                                    ↳ Använd kortets namn
+                                </button>
+                            )}
+                        </div>
+                        <div style={{display:'flex', gap:'0.75rem'}}>
+                            <button className="btn btn-secondary" style={{flex:1}} onClick={() => setCardModal(null)}>Avbryt</button>
+                            <button className="btn btn-primary" style={{flex:1, justifyContent:'center'}}
+                                onClick={saveCard} disabled={!cardModal.name.trim()}>
+                                {cardModal.mode === 'add' ? 'Lägg till' : 'Spara'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="planning-panel" onClick={e => e.stopPropagation()}>
                 {/* HEADER */}
                 <div className="planning-panel-header">
                     <div style={{display:'flex', alignItems:'center', gap:'0.6rem', flex:1, minWidth:0}}>
                         <span style={{fontSize:'1.3rem'}}>📍</span>
-                        <span style={{fontFamily:'Space Mono, monospace', fontWeight:700, fontSize:'1.05rem', color:'white'}}>
-                            {trip.name} — Besöksmål
+                        <span style={{fontFamily:'DM Sans, sans-serif', fontWeight:800, fontSize:'1.1rem', color:'white'}}>
+                            {trip.name}
                         </span>
+                        {cards.length > 0 && (
+                            <span style={{background:'rgba(255,255,255,0.2)', borderRadius:'20px', padding:'0.1rem 0.6rem', fontSize:'0.75rem', fontWeight:700, color:'white'}}>{cards.length}</span>
+                        )}
                     </div>
                     <button className="close-btn" style={{color:'white', background:'rgba(255,255,255,0.15)'}} onClick={onClose}>×</button>
                 </div>
 
                 <div className="planning-panel-body">
-
-                    {/* DESTINATION TABS + ADD */}
-                    <div style={{display:'flex', gap:'0.5rem', flexWrap:'wrap', alignItems:'center'}}>
-                        {destinations.map((d, i) => (
-                            <div key={d.id || i} style={{display:'flex', alignItems:'center', gap:'0.2rem'}}>
-                                <button
-                                    onClick={() => setActiveDest(i)}
-                                    style={{
-                                        padding:'0.4rem 0.9rem', borderRadius:'20px', border:'2px solid var(--primary)',
-                                        fontFamily:'DM Sans, sans-serif', fontSize:'0.88rem', fontWeight:600, cursor:'pointer',
-                                        background: i === activeDest ? 'var(--primary)' : 'white',
-                                        color: i === activeDest ? 'white' : 'var(--primary)',
-                                        transition:'all 0.15s'
-                                    }}
-                                >
-                                    {d.name || `Destination ${i+1}`}
-                                </button>
-                                {destinations.length > 1 && (
-                                    <button onClick={() => removeDest(i)} style={{background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:'0.8rem', padding:'0.2rem', lineHeight:1}} title="Ta bort destination">✕</button>
-                                )}
-                            </div>
-                        ))}
-                        <button className="add-link" onClick={addDest} style={{fontSize:'0.85rem'}}>+ Ny destination</button>
+                    {/* LABEL */}
+                    <div style={{fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', color:'var(--text-muted)', textTransform:'uppercase'}}>
+                        Planering
                     </div>
 
-                    {/* DESTINATION FIELDS */}
-                    <div style={{display:'flex', flexDirection:'column', gap:'1.25rem'}}>
-
-                        {/* DEST NAME + DATES */}
-                        <div style={{background:'var(--bg)', borderRadius:'10px', padding:'1rem', display:'flex', flexDirection:'column', gap:'0.75rem'}}>
-                            <div>
-                                <div className="form-label" style={{marginBottom:'0.35rem'}}>Destinationsnamn</div>
-                                <input
-                                    className="form-input"
-                                    placeholder="t.ex. Bangkok, Chiang Mai..."
-                                    value={dest.name || ''}
-                                    onChange={e => updateDest('name', e.target.value)}
-                                />
-                            </div>
-                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem'}}>
-                                <div>
-                                    <div className="date-label" style={{marginBottom:'0.35rem'}}>📅 Ankomst</div>
-                                    <input type="date" className="form-input" value={dest.dateFrom || ''} onChange={e => updateDest('dateFrom', e.target.value)} />
-                                </div>
-                                <div>
-                                    <div className="date-label" style={{marginBottom:'0.35rem'}}>✈️ Avresa</div>
-                                    <input type="date" className="form-input" value={dest.dateTo || ''} onChange={e => updateDest('dateTo', e.target.value)} min={dest.dateFrom || ''} />
-                                </div>
-                            </div>
-                            {dest.dateFrom && dest.dateTo && new Date(dest.dateTo) > new Date(dest.dateFrom) && (
-                                <div style={{fontSize:'0.82rem', color:'var(--text-muted)', fontWeight:600}}>
-                                    {Math.round((new Date(dest.dateTo) - new Date(dest.dateFrom)) / 86400000)} nätter
-                                </div>
-                            )}
-                        </div>
-
-                        {/* KARTA */}
-                        <div>
-                            <span className="section-label">🗺 Karta</span>
-                            <div className="map-input-row">
-                                <input
-                                    placeholder={dest.name ? `t.ex. ${dest.name} centrum` : 'Sök plats...'}
-                                    value={dest.mapQuery || ''}
-                                    onChange={e => updateDest('mapQuery', e.target.value)}
-                                />
-                                {!dest.mapQuery && dest.name && (
-                                    <button className="btn btn-secondary btn-small" onClick={() => updateDest('mapQuery', dest.name)}>Använd namn</button>
-                                )}
-                            </div>
-                            {dest.mapQuery && (
-                                <div className="map-iframe-wrap">
-                                    <iframe src={mapEmbedUrl(dest.mapQuery)} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title={`Karta: ${dest.mapQuery}`} />
-                                    <a className="map-open-btn" href={mapDirectUrl(dest.mapQuery)} target="_blank" rel="noreferrer">🗺 Öppna i Google Maps</a>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* BESÖKSMÅL */}
-                        <div>
-                            <span className="section-label">📍 Besöksmål</span>
-                            <div className="sights-list">
-                                {(dest.sights || []).map((sight, sIdx) => (
-                                    <div key={sight.id || sIdx} style={{background:'white', border:'1.5px solid var(--border)', borderRadius:'10px', overflow:'hidden'}}>
-                                        <div style={{padding:'0.9rem 1rem', display:'flex', flexDirection:'column', gap:'0.6rem'}}>
-                                            {/* NAME ROW */}
-                                            <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
-                                                <span style={{fontSize:'1rem'}}>📍</span>
-                                                <input
-                                                    className="sight-name-input"
-                                                    placeholder="Namn på besöksmål..."
-                                                    value={sight.name}
-                                                    onChange={e => updateSight(sIdx, 'name', e.target.value)}
-                                                />
-                                                <button className="sight-del-btn" onClick={() => removeSight(sIdx)} title="Ta bort">✕</button>
-                                            </div>
-                                            {/* LINK ROW */}
-                                            <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
-                                                <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>🔗</span>
-                                                <input
-                                                    className="sight-link-input"
-                                                    placeholder="Länk (TripAdvisor, hemsida...)"
-                                                    value={sight.link || ''}
-                                                    onChange={e => updateSight(sIdx, 'link', e.target.value)}
-                                                />
-                                                {sight.link && (
-                                                    <a href={sight.link.startsWith('http') ? sight.link : 'https://'+sight.link} target="_blank" rel="noreferrer" className="sight-open-btn">↗</a>
-                                                )}
-                                            </div>
-                                            {/* MAP ROW */}
-                                            <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
-                                                <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>🗺</span>
-                                                <input
-                                                    className="sight-link-input"
-                                                    placeholder="Kartsökning (t.ex. Eiffeltornet, Paris)"
-                                                    value={sight.mapQuery || ''}
-                                                    onChange={e => updateSight(sIdx, 'mapQuery', e.target.value)}
-                                                />
-                                                {!sight.mapQuery && sight.name && (
-                                                    <button className="sight-open-btn" style={{fontSize:'0.7rem', fontWeight:600, color:'var(--primary)', border:'1px solid var(--primary-light)', borderRadius:'4px', padding:'0.15rem 0.4rem', background:'none', cursor:'pointer', whiteSpace:'nowrap'}} onClick={() => updateSight(sIdx, 'mapQuery', sight.name)}>Använd namn</button>
-                                                )}
-                                            </div>
-                                            {/* NOTE */}
-                                            <textarea
-                                                className="sight-note-input"
-                                                placeholder="Anteckning (öppettider, tips, bokningsnummer...)"
-                                                value={sight.note || ''}
-                                                onChange={e => updateSight(sIdx, 'note', e.target.value)}
-                                            />
+                    {/* KORTGALLERI — samma grid som planeraren */}
+                    <div style={{
+                        display:'grid',
+                        gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
+                        gap:'0.85rem',
+                    }}>
+                        {cards.map((card, idx) => {
+                            const typeInfo = CARD_TYPES.find(t => t.id === (card.type||'sight')) || CARD_TYPES[0];
+                            const mapsUrl = card.mapQuery ? `https://www.google.com/maps/search/${encodeURIComponent(card.mapQuery)}` : null;
+                            return (
+                                <div key={card.id||idx} style={{
+                                    background: card.checked ? 'rgba(26,138,107,0.06)' : 'white',
+                                    border: card.checked ? '1.5px solid rgba(26,138,107,0.3)' : '1.5px solid var(--border-solid)',
+                                    borderRadius:'12px', overflow:'hidden',
+                                    display:'flex', flexDirection:'column',
+                                    boxShadow:'0 2px 8px rgba(26,107,138,0.08)',
+                                    transition:'all 0.2s',
+                                    opacity: card.checked ? 0.75 : 1
+                                }}
+                                onMouseEnter={e => { if (!card.checked) { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 6px 18px rgba(26,107,138,0.15)'; }}}
+                                onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 2px 8px rgba(26,107,138,0.08)'; }}
+                                >
+                                    <div style={{
+                                        background: card.checked
+                                            ? 'linear-gradient(135deg,rgba(26,138,107,0.15),rgba(26,138,107,0.08))'
+                                            : card.type==='hotel' ? 'linear-gradient(135deg,#e8f4ff,#cce4f7)' : card.type==='restaurant' ? 'linear-gradient(135deg,#fff3e0,#ffe0b2)' : 'linear-gradient(135deg,#e8f5ee,#d4eadd)',
+                                        padding:'0.85rem 0.75rem 0.65rem',
+                                        display:'flex', flexDirection:'column', alignItems:'center', gap:'0.3rem',
+                                        position:'relative'
+                                    }}>
+                                        {/* Check-av knapp */}
+                                        <button onClick={() => toggleChecked(idx)} style={{
+                                            position:'absolute', top:'0.5rem', right:'0.5rem',
+                                            width:'22px', height:'22px', borderRadius:'50%',
+                                            border: card.checked ? 'none' : '2px solid rgba(0,0,0,0.15)',
+                                            background: card.checked ? '#1a8a6b' : 'rgba(255,255,255,0.7)',
+                                            cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                                            fontSize:'0.7rem', color:'white', transition:'all 0.2s', flexShrink:0
+                                        }} title={card.checked ? 'Markera som ej avklarat' : 'Markera som avklarat'}>
+                                            {card.checked ? '✓' : ''}
+                                        </button>
+                                        <span style={{fontSize:'1.8rem', filter: card.checked ? 'grayscale(0.4)' : 'none'}}>{typeInfo.icon}</span>
+                                        <span style={{
+                                            fontSize:'0.62rem', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase',
+                                            color: card.checked ? '#1a8a6b' : card.type==='hotel' ? '#1565c0' : card.type==='restaurant' ? '#e65100' : 'var(--primary)'
+                                        }}>{card.checked ? '✓ Avklarat' : typeInfo.label}</span>
+                                    </div>
+                                    <div style={{padding:'0.6rem 0.75rem', flex:1}}>
+                                        <div style={{fontWeight:700, fontSize:'0.85rem', lineHeight:1.3, color:'var(--text)', wordBreak:'break-word',
+                                            textDecoration: card.checked ? 'line-through' : 'none', opacity: card.checked ? 0.6 : 1}}>
+                                            {card.name}
                                         </div>
-                                        {sight.mapQuery && <SightMap query={sight.mapQuery} />}
-                                        {/* READ-ONLY SIGHT LINK */}
-                                        {sight.name && !sight.mapQuery && sight.link && (
-                                            <div style={{padding:'0 1rem 0.75rem'}}>
-                                                <a href={sight.link.startsWith('http') ? sight.link : 'https://'+sight.link} target="_blank" rel="noreferrer"
-                                                    style={{display:'inline-flex', alignItems:'center', gap:'0.3rem', background:'var(--primary)', color:'white', textDecoration:'none', padding:'0.3rem 0.75rem', borderRadius:'6px', fontSize:'0.8rem', fontWeight:600}}>
-                                                    ↗ Öppna länk
-                                                </a>
+                                        {card.note && !card.checked && (
+                                            <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'0.3rem', lineHeight:1.4,
+                                                overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical'}}>
+                                                {card.note}
                                             </div>
                                         )}
+                                        {mapsUrl && !card.checked && (
+                                            <a href={mapsUrl} target="_blank" rel="noreferrer"
+                                                style={{
+                                                    display:'inline-flex', alignItems:'center', gap:'0.25rem',
+                                                    marginTop:'0.45rem', fontSize:'0.72rem', fontWeight:700,
+                                                    color:'var(--primary)', textDecoration:'none',
+                                                    background:'rgba(26,107,138,0.08)', borderRadius:'5px',
+                                                    padding:'0.2rem 0.45rem'
+                                                }}
+                                                onClick={e => e.stopPropagation()}
+                                            >🗺 Google Maps</a>
+                                        )}
                                     </div>
-                                ))}
-                                <button className="add-link" onClick={addSight}>+ Lägg till besöksmål</button>
-                            </div>
+                                    {!card.checked && (
+                                    <div style={{display:'flex', borderTop:'1px solid var(--border)', background:'rgba(255,255,255,0.5)'}}>
+                                        <button onClick={() => openEditCard(idx)} style={{
+                                            flex:1, padding:'0.45rem', background:'none', border:'none',
+                                            borderRight:'1px solid var(--border)', cursor:'pointer',
+                                            color:'var(--primary)', fontSize:'0.8rem', fontWeight:600,
+                                            fontFamily:'DM Sans, sans-serif', transition:'background 0.15s'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background='rgba(26,107,138,0.06)'}
+                                        onMouseLeave={e => e.currentTarget.style.background='none'}
+                                        >✏️ Redigera</button>
+                                        <button onClick={() => removeCard(idx)} style={{
+                                            flex:1, padding:'0.45rem', background:'none', border:'none',
+                                            cursor:'pointer', color:'var(--danger)', fontSize:'0.8rem', fontWeight:600,
+                                            fontFamily:'DM Sans, sans-serif', transition:'background 0.15s'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background='rgba(192,57,43,0.06)'}
+                                        onMouseLeave={e => e.currentTarget.style.background='none'}
+                                        >🗑 Radera</button>
+                                    </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+
+                        {/* Lägg till-kort */}
+                        <div onClick={openAddCard} style={{
+                            minHeight:'160px',
+                            border:'2px dashed rgba(26,107,138,0.3)',
+                            borderRadius:'12px',
+                            display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                            gap:'0.5rem', cursor:'pointer',
+                            background:'rgba(255,255,255,0.4)',
+                            color:'var(--text-muted)', transition:'all 0.2s'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor='var(--primary)'; e.currentTarget.style.background='rgba(26,107,138,0.05)'; e.currentTarget.style.color='var(--primary)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(26,107,138,0.3)'; e.currentTarget.style.background='rgba(255,255,255,0.4)'; e.currentTarget.style.color='var(--text-muted)'; }}
+                        >
+                            <span style={{fontSize:'1.8rem', opacity:0.5}}>+</span>
+                            <span style={{fontSize:'0.82rem', fontWeight:600}}>Lägg till</span>
                         </div>
                     </div>
                 </div>
 
-                {/* SAVE BAR */}
                 <div className="panel-save-bar">
                     <button className="btn btn-secondary" onClick={onClose}>Stäng</button>
-                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}
+                        style={saved ? {background:'#1a8a6b'} : {}}>
                         {saved ? '✓ Sparat!' : saving ? 'Sparar...' : '💾 Spara ändringar'}
                     </button>
                 </div>
@@ -1493,6 +1547,7 @@ function TripCards({ trips, selectedTrip, onSelectTrip, allExpenses, onAddTrip, 
 function DayBreakdown({ expenses, categories, users }) {
     const getCatInfo = (id) => categories.find(c => c.id === id) || { icon: '📌', name: id };
     const getUserName = (uid) => users.find(u => u.id === uid)?.name || 'Okänd';
+    const [collapsed, setCollapsed] = useState({});
 
     const grouped = expenses.reduce((acc, e) => {
         const day = new Date(e.date).toLocaleDateString('sv-SE');
@@ -1512,33 +1567,44 @@ function DayBreakdown({ expenses, categories, users }) {
             {sortedDays.map(day => {
                 const dayExpenses = grouped[day];
                 const dayTotal = dayExpenses.reduce((s, e) => s + e.amount * e.exchange_rate, 0);
+                const isCollapsed = collapsed[day];
                 return (
                     <div key={day} className="day-group">
-                        <div className="day-group-header">
-                            <span>{day}</span>
+                        <div className="day-group-header"
+                            onClick={() => setCollapsed(c => ({...c, [day]: !c[day]}))}
+                            style={{cursor:'pointer', userSelect:'none'}}
+                        >
+                            <div style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                                <span style={{fontSize:'0.8rem', opacity:0.7, transition:'transform 0.2s',
+                                    display:'inline-block', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'}}>▼</span>
+                                <span>{day}</span>
+                                <span style={{fontSize:'0.75rem', opacity:0.65}}>({dayExpenses.length} utgifter)</span>
+                            </div>
                             <span className="day-group-total">{dayTotal.toFixed(0)} kr</span>
                         </div>
-                        <div className="day-group-items">
-                            {dayExpenses.map(expense => {
-                                const cat = getCatInfo(expense.category);
-                                return (
-                                    <div key={expense.id} className="expense-item">
-                                        <div className="expense-category">{cat.icon}</div>
-                                        <div className="expense-details">
-                                            <div className="expense-description">{expense.description}</div>
-                                            <div className="expense-meta">
-                                                {cat.name} · {getUserName(expense.added_by)}
+                        {!isCollapsed && (
+                            <div className="day-group-items">
+                                {dayExpenses.map(expense => {
+                                    const cat = getCatInfo(expense.category);
+                                    return (
+                                        <div key={expense.id} className="expense-item">
+                                            <div className="expense-category">{cat.icon}</div>
+                                            <div className="expense-details">
+                                                <div className="expense-description">{expense.description}</div>
+                                                <div className="expense-meta">
+                                                    {cat.name} · {getUserName(expense.added_by)}
+                                                </div>
                                             </div>
+                                            <div className="expense-amount">
+                                                <div className="expense-price">{(expense.amount * expense.exchange_rate).toFixed(0)} kr</div>
+                                                <div className="expense-currency">({expense.amount.toFixed(0)} {expense.currency})</div>
+                                            </div>
+                                            <div style={{width:'32px'}}></div>
                                         </div>
-                                        <div className="expense-amount">
-                                            <div className="expense-price">{(expense.amount * expense.exchange_rate).toFixed(0)} kr</div>
-                                            <div className="expense-currency">({expense.amount.toFixed(0)} {expense.currency})</div>
-                                        </div>
-                                        <div style={{width:'32px'}}></div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 );
             })}
@@ -1547,6 +1613,7 @@ function DayBreakdown({ expenses, categories, users }) {
 }
 
 // ── HUVUDAPP ─────────────────────────────────────────────
+
 function App() {
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
@@ -1588,6 +1655,14 @@ function App() {
             setTrips(tripsData || []);
             setExpenses(expensesData || []);
             setLoading(false);
+            // Smart tab: go to Pågående if there's an active trip, else Planerade
+            const active = (tripsData || []).filter(t => !t.is_planned && !t.is_completed);
+            if (active.length > 0) {
+                setActiveTab('expenses');
+                setSelectedTrip(active[0].id);
+            } else {
+                setActiveTab('planned');
+            }
         } catch (err) {
             setError('Kunde inte ladda data: ' + err.message);
             setLoading(false);
@@ -2070,28 +2145,26 @@ function mapDirectUrl(query) {
     return `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
 }
 
-// ── RESAPLANERARE PANEL ───────────────────────────────────
+// ── RESAPLANERARE PANEL (NY DESIGN) ──────────────────────
 function TripPlannerPanel({ trip, onSave, onClose, onActivate, onDelete }) {
     const [name, setName] = useState(trip.name || '');
     const [budget, setBudget] = useState(trip.budget ? String(trip.budget) : '');
     const [destinations, setDestinations] = useState(() => {
         try { return trip.plan_data ? JSON.parse(trip.plan_data) : [makeDestination()]; } catch { return [makeDestination()]; }
     });
+    const [activeDest, setActiveDest] = useState(0);
     const [saving, setSaving] = useState(false);
     const [confirm, setConfirm] = useState(null);
 
-    const updateDest = (idx, field, val) => {
-        setDestinations(ds => ds.map((d, i) => i === idx ? { ...d, [field]: val } : d));
-    };
-    const updateSight = (dIdx, sIdx, field, val) => {
-        setDestinations(ds => ds.map((d, i) => i !== dIdx ? d : {
-            ...d, sights: d.sights.map((s, j) => j === sIdx ? { ...s, [field]: val } : s)
-        }));
-    };
-    const addDest = () => setDestinations(ds => [...ds, makeDestination()]);
-    const removeDest = (idx) => setDestinations(ds => ds.filter((_, i) => i !== idx));
-    const addSight = (dIdx) => setDestinations(ds => ds.map((d, i) => i !== dIdx ? d : { ...d, sights: [...d.sights, makeSight()] }));
-    const removeSight = (dIdx, sIdx) => setDestinations(ds => ds.map((d, i) => i !== dIdx ? d : { ...d, sights: d.sights.filter((_, j) => j !== sIdx) }));
+    // Modal för att lägga till/redigera ett kort
+    const [cardModal, setCardModal] = useState(null);
+    // { mode: 'add'|'edit', dIdx, sIdx?, type?, name?, note?, link?, mapQuery? }
+
+    const CARD_TYPES = [
+        { id: 'sight',      label: 'Besöksmål',  icon: '📍' },
+        { id: 'hotel',      label: 'Boende',      icon: '🏨' },
+        { id: 'restaurant', label: 'Restaurang',  icon: '🍽️' },
+    ];
 
     const handleSave = async () => {
         setSaving(true);
@@ -2100,38 +2173,52 @@ function TripPlannerPanel({ trip, onSave, onClose, onActivate, onDelete }) {
             budget: budget ? parseFloat(budget) : null,
             plan_data: JSON.stringify(destinations)
         });
-        setSaving(false);
+        setSaving('done');
+        setTimeout(() => setSaving(false), 1800);
     };
 
-    // Track which dest sections are collapsed — all collapsed by default
-    const [collapsed, setCollapsed] = useState(() => {
-        const init = {};
-        try {
-            const ds = trip.plan_data ? JSON.parse(trip.plan_data) : [];
-            ds.forEach((_, i) => { init[i] = true; });
-        } catch {}
-        return init;
-    });
-    const toggleCollapse = (idx) => setCollapsed(c => ({ ...c, [idx]: !c[idx] }));
+    // ── Destination helpers ──
+    const addDest = () => {
+        setDestinations(ds => [...ds, makeDestination()]);
+        setActiveDest(destinations.length);
+    };
+    const removeDest = (idx) => {
+        setDestinations(ds => ds.filter((_, i) => i !== idx));
+        setActiveDest(a => Math.max(0, a >= idx ? a - 1 : a));
+    };
+    const updateDest = (idx, field, val) =>
+        setDestinations(ds => ds.map((d, i) => i === idx ? { ...d, [field]: val } : d));
 
-    // Track which sights are collapsed — collapsed by default
-    const [collapsedSights, setCollapsedSights] = useState({});
-    const toggleSight = (dIdx, sIdx) => setCollapsedSights(c => ({
-        ...c, [`${dIdx}-${sIdx}`]: !c[`${dIdx}-${sIdx}`]
-    }));
-    // When a new sight is added, expand it automatically
-    const addSightExpanded = (dIdx) => {
-        const newSights = destinations[dIdx]?.sights || [];
-        const newIdx = newSights.length; // index of the about-to-be-added sight
-        addSight(dIdx);
-        setTimeout(() => setCollapsedSights(c => ({ ...c, [`${dIdx}-${newIdx}`]: false })), 0);
+    // ── Card helpers ──
+    // Cards are stored inside dest.sights but now have a `type` field
+    const getCards = (dIdx) => (destinations[dIdx]?.sights || []);
+
+    const openAddCard = () => setCardModal({ mode:'add', dIdx: activeDest, type:'sight', name:'', note:'', link:'', mapQuery:'' });
+    const openEditCard = (dIdx, sIdx) => {
+        const card = getCards(dIdx)[sIdx];
+        setCardModal({ mode:'edit', dIdx, sIdx, type: card.type||'sight', name: card.name||'', note: card.note||'', link: card.link||'', mapQuery: card.mapQuery||'' });
+    };
+    const removeCard = (dIdx, sIdx) =>
+        setDestinations(ds => ds.map((d, i) => i !== dIdx ? d : { ...d, sights: d.sights.filter((_, j) => j !== sIdx) }));
+
+    const saveCard = () => {
+        if (!cardModal) return;
+        const { mode, dIdx, sIdx, type, name: cName, note, link, mapQuery } = cardModal;
+        if (!cName.trim()) return;
+        if (mode === 'add') {
+            setDestinations(ds => ds.map((d, i) => i !== dIdx ? d : {
+                ...d, sights: [...(d.sights||[]), { id: Date.now(), type, name: cName.trim(), note, link, mapQuery }]
+            }));
+        } else {
+            setDestinations(ds => ds.map((d, i) => i !== dIdx ? d : {
+                ...d, sights: d.sights.map((s, j) => j !== sIdx ? s : { ...s, type, name: cName.trim(), note, link, mapQuery })
+            }));
+        }
+        setCardModal(null);
     };
 
-    const totalNights = destinations.reduce((sum, d) => {
-        if (d.dateFrom && d.dateTo && new Date(d.dateTo) > new Date(d.dateFrom))
-            return sum + Math.round((new Date(d.dateTo) - new Date(d.dateFrom)) / 86400000);
-        return sum;
-    }, 0);
+    const dest = destinations[activeDest] || destinations[0];
+    const cards = dest ? getCards(activeDest) : [];
 
     return (
         <div className="planning-panel-overlay" onClick={onClose}>
@@ -2143,276 +2230,246 @@ function TripPlannerPanel({ trip, onSave, onClose, onActivate, onDelete }) {
                     onCancel={() => setConfirm(null)}
                 />
             )}
-            <div className="planning-panel" onClick={e => e.stopPropagation()}>
 
-                {/* ── LEVEL 1: RESA (mörk header) ── */}
-                <div className="planning-panel-header">
-                    <div style={{flex:1, minWidth:0}}>
-                        <div style={{fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.1em', opacity:0.6, textTransform:'uppercase', marginBottom:'0.35rem'}}>RESA</div>
-                        <input
-                            className="editable-title-input"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder="Resans namn..."
-                            style={{fontSize:'1.25rem'}}
-                        />
-                        <div style={{display:'flex', gap:'1.25rem', marginTop:'0.6rem', flexWrap:'wrap', alignItems:'center'}}>
-                            <div style={{display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'0.82rem', opacity:0.85}}>
-                                <span>💰 Budget:</span>
-                                <input
-                                    className="budget-inline-input"
-                                    type="number" min="0" step="1"
-                                    placeholder="valfritt"
-                                    value={budget}
-                                    onChange={e => setBudget(e.target.value)}
-                                    style={{width:'100px'}}
-                                />
-                                <span>kr</span>
-                            </div>
-                            {destinations.length > 0 && (
-                                <div style={{fontSize:'0.82rem', opacity:0.75}}>
-                                    {destinations.length === 1
-                                        ? (destinations[0].name || 'en destination')
-                                        : `${destinations.filter(d => d.name).length} stopp`}
-                                    {totalNights > 0 && ` · ${totalNights} nätter`}
-                                </div>
+            {/* ── LÄGG TILL / REDIGERA KORT MODAL ── */}
+            {cardModal && (
+                <div className="modal-overlay" onClick={() => setCardModal(null)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth:'420px'}}>
+                        <div className="modal-header">
+                            <span className="modal-title">{cardModal.mode === 'add' ? '+ Lägg till' : '✏️ Redigera'}</span>
+                            <button className="close-btn" onClick={() => setCardModal(null)}>×</button>
+                        </div>
+
+                        {/* Typ-väljare */}
+                        <div style={{display:'flex', gap:'0.5rem', marginBottom:'1.25rem'}}>
+                            {CARD_TYPES.map(t => (
+                                <button key={t.id} onClick={() => setCardModal(m => ({...m, type: t.id}))}
+                                    style={{
+                                        flex:1, padding:'0.65rem 0.5rem', borderRadius:'10px', border:'2px solid',
+                                        borderColor: cardModal.type === t.id ? 'var(--primary)' : 'var(--border-solid)',
+                                        background: cardModal.type === t.id ? 'var(--primary)' : 'rgba(255,255,255,0.8)',
+                                        color: cardModal.type === t.id ? 'white' : 'var(--text-muted)',
+                                        fontFamily:'DM Sans, sans-serif', fontWeight:700, fontSize:'0.82rem',
+                                        cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.25rem'
+                                    }}>
+                                    <span style={{fontSize:'1.3rem'}}>{t.icon}</span>
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Namn</label>
+                            <input
+                                className="form-input"
+                                placeholder={cardModal.type === 'hotel' ? 'Hotellnamn...' : cardModal.type === 'restaurant' ? 'Restaurangnamn...' : 'Besöksmålsnamn...'}
+                                value={cardModal.name}
+                                onChange={e => setCardModal(m => ({...m, name: e.target.value}))}
+                                autoFocus
+                                onKeyDown={e => e.key === 'Enter' && saveCard()}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Anteckning <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
+                            <textarea className="form-input" rows="3"
+                                style={{resize:'vertical', fontFamily:'inherit', fontSize:'0.9rem'}}
+                                placeholder={cardModal.type === 'hotel' ? 'Bokningsnummer, check-in-tid...' : cardModal.type === 'restaurant' ? 'Tips, öppettider, adress...' : 'Öppettider, tips, adress...'}
+                                value={cardModal.note}
+                                onChange={e => setCardModal(m => ({...m, note: e.target.value}))}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Länk <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
+                            <input className="form-input" placeholder="https://..." value={cardModal.link}
+                                onChange={e => setCardModal(m => ({...m, link: e.target.value}))} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Google Maps <span style={{fontWeight:400, color:'var(--text-muted)'}}>— valfritt</span></label>
+                            <input className="form-input" placeholder="t.ex. Wat Pho Bangkok, Hotel Marina Dubrovnik..."
+                                value={cardModal.mapQuery||''}
+                                onChange={e => setCardModal(m => ({...m, mapQuery: e.target.value}))} />
+                            {!cardModal.mapQuery && cardModal.name && (
+                                <button type="button" onClick={() => setCardModal(m => ({...m, mapQuery: m.name}))}
+                                    style={{marginTop:'0.35rem', background:'none', border:'none', color:'var(--primary)', fontFamily:'DM Sans, sans-serif', fontSize:'0.8rem', fontWeight:700, cursor:'pointer', padding:0}}>
+                                    ↳ Använd kortets namn
+                                </button>
                             )}
                         </div>
+
+                        <div style={{display:'flex', gap:'0.75rem'}}>
+                            <button className="btn btn-secondary" style={{flex:1}} onClick={() => setCardModal(null)}>Avbryt</button>
+                            <button className="btn btn-primary" style={{flex:1, justifyContent:'center'}}
+                                onClick={saveCard} disabled={!cardModal.name.trim()}>
+                                {cardModal.mode === 'add' ? 'Lägg till' : 'Spara'}
+                            </button>
+                        </div>
                     </div>
-                    <div style={{display:'flex', flexDirection:'column', gap:'0.5rem', alignItems:'flex-end', flexShrink:0}}>
-                        <button className="close-btn" style={{color:'white', background:'rgba(255,255,255,0.15)'}} onClick={onClose}>×</button>
-                        <button className="btn btn-primary btn-small" onClick={() => { handleSave(); onActivate(trip.id); onClose(); }}>▶ Starta resa</button>
+                </div>
+            )}
+
+            <div className="planning-panel" onClick={e => e.stopPropagation()}>
+
+                {/* ── HEADER: Resa + Budget ── */}
+                <div className="planning-panel-header">
+                    <div style={{flex:1, minWidth:0}}>
+                        {/* Radera-knapp + Resa-label */}
+                        <div style={{display:'flex', alignItems:'center', gap:'0.75rem', marginBottom:'0.75rem'}}>
+                            <button onClick={() => setConfirm(true)}
+                                style={{background:'rgba(192,57,43,0.18)', border:'1.5px solid rgba(192,57,43,0.35)', borderRadius:'8px', padding:'0.3rem 0.5rem', cursor:'pointer', color:'#ef9a9a', fontSize:'1rem', lineHeight:1, flexShrink:0}}
+                                title="Radera resa">🗑</button>
+                            <span style={{fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.1em', opacity:0.6, textTransform:'uppercase'}}>Resa</span>
+                            <input
+                                className="editable-title-input"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                placeholder="Namn på resa..."
+                                style={{fontSize:'1.1rem', flex:1}}
+                            />
+                        </div>
+                        {/* Budget-rad */}
+                        <div style={{display:'flex', alignItems:'center', gap:'0.75rem'}}>
+                            <span style={{fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.1em', opacity:0.6, textTransform:'uppercase'}}>Budget</span>
+                            <input
+                                className="budget-inline-input"
+                                type="number" min="0" step="1"
+                                placeholder="Välj summa här"
+                                value={budget}
+                                onChange={e => setBudget(e.target.value)}
+                                style={{flex:1, maxWidth:'180px'}}
+                            />
+                            {budget && <span style={{fontSize:'0.85rem', opacity:0.75}}>kr</span>}
+                        </div>
                     </div>
+                    <button className="close-btn" style={{color:'white', background:'rgba(255,255,255,0.15)', alignSelf:'flex-start'}} onClick={onClose}>×</button>
                 </div>
 
                 {/* ── BODY ── */}
                 <div className="planning-panel-body">
 
-                    {/* STOPP & PLANERING SECTION LABEL */}
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                        <div style={{display:'flex', alignItems:'center', gap:'0.6rem'}}>
-                            <div style={{width:'3px', height:'20px', background:'var(--primary)', borderRadius:'2px'}} />
-                            <span style={{fontWeight:700, fontSize:'0.95rem', color:'var(--text)'}}>Stopp & Planering</span>
-                            <span style={{fontSize:'0.75rem', color:'var(--text-muted)', background:'var(--border)', borderRadius:'20px', padding:'0.1rem 0.6rem', fontWeight:600}}>
-                                {destinations.length === 1 ? 'En destination' : `${destinations.length} stopp`}
-                            </span>
+                    {/* ── KORTGALLERI ── */}
+                    <div>
+                        <div style={{fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.75rem'}}>
+                            Planering
+                            {cards.length > 0 && <span style={{marginLeft:'0.5rem', background:'var(--primary)', color:'white', borderRadius:'20px', padding:'0.05rem 0.55rem', fontSize:'0.7rem', fontWeight:700}}>{cards.length}</span>}
                         </div>
-                        <button className="add-link" onClick={addDest} style={{fontSize:'0.85rem'}}>+ Lägg till stopp</button>
-                    </div>
 
-                    {/* ── LEVEL 2: DESTINATIONER ── */}
-                    <div style={{display:'flex', flexDirection:'column', gap:'1.25rem'}}>
-                        {destinations.map((dest, dIdx) => (
-                            <div key={dest.id} style={{
-                                border:'2px solid var(--primary)',
-                                borderRadius:'12px', overflow:'hidden',
-                                boxShadow:'0 2px 8px rgba(47,111,78,0.08)'
-                            }}>
-                                {/* Destination header — teal accent */}
-                                <div style={{
-                                    background:'linear-gradient(135deg, #e8f5ee 0%, #d4eadd 100%)',
-                                    padding:'0.85rem 1rem',
-                                    display:'flex', alignItems:'center', gap:'0.75rem',
-                                    borderBottom: collapsed[dIdx] ? 'none' : '1px solid var(--border)'
-                                }}>
-                                    <div style={{
-                                        width:'28px', height:'28px', borderRadius:'50%',
-                                        background:'var(--primary)', color:'white',
-                                        display:'flex', alignItems:'center', justifyContent:'center',
-                                        fontFamily:'Space Mono, monospace', fontWeight:700, fontSize:'0.8rem', flexShrink:0
-                                    }}>{dIdx + 1}</div>
-                                    <input
-                                        className="dest-name-input"
-                                        placeholder={destinations.length === 1 ? 'Stad / Destination...' : 'Stad / Stopp...'}
-                                        value={dest.name}
-                                        onChange={e => updateDest(dIdx, 'name', e.target.value)}
-                                        style={{fontWeight:700, fontSize:'1rem', color:'var(--text)', background:'transparent', border:'none', borderBottom:'2px solid transparent', padding:'0.2rem 0'}}
-                                        onFocus={e => e.target.style.borderBottomColor = 'var(--primary)'}
-                                        onBlur={e => e.target.style.borderBottomColor = 'transparent'}
-                                    />
-                                    {/* Date pill */}
-                                    {(dest.dateFrom || dest.dateTo) && (
-                                        <div style={{fontSize:'0.75rem', color:'var(--text-muted)', background:'white', borderRadius:'20px', padding:'0.2rem 0.7rem', fontWeight:500, whiteSpace:'nowrap', flexShrink:0, border:'1px solid var(--border)'}}>
-                                            {dest.dateFrom || '?'} → {dest.dateTo || '?'}
-                                            {dest.dateFrom && dest.dateTo && new Date(dest.dateTo) > new Date(dest.dateFrom) &&
-                                                ` (${Math.round((new Date(dest.dateTo) - new Date(dest.dateFrom)) / 86400000)} nätter)`
-                                            }
+                        {/* Kortgalleri — radbrytande grid */}
+                        <div style={{
+                            display:'grid',
+                            gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
+                            gap:'0.85rem',
+                        }}>
+                            {/* Befintliga kort */}
+                            {cards.map((card, sIdx) => {
+                                const typeInfo = CARD_TYPES.find(t => t.id === (card.type||'sight')) || CARD_TYPES[0];
+                                const mapsUrl = card.mapQuery ? `https://www.google.com/maps/search/${encodeURIComponent(card.mapQuery)}` : null;
+                                return (
+                                    <div key={card.id||sIdx} style={{
+                                        background:'white',
+                                        border:'1.5px solid var(--border-solid)',
+                                        borderRadius:'12px', overflow:'hidden',
+                                        display:'flex', flexDirection:'column',
+                                        boxShadow:'0 2px 8px rgba(26,107,138,0.08)',
+                                        transition:'transform 0.15s, box-shadow 0.15s'
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 6px 18px rgba(26,107,138,0.15)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 2px 8px rgba(26,107,138,0.08)'; }}
+                                    >
+                                        {/* Kort header — typ + ikon */}
+                                        <div style={{
+                                            background: card.type==='hotel' ? 'linear-gradient(135deg,#e8f4ff,#cce4f7)' : card.type==='restaurant' ? 'linear-gradient(135deg,#fff3e0,#ffe0b2)' : 'linear-gradient(135deg,#e8f5ee,#d4eadd)',
+                                            padding:'0.85rem 0.75rem 0.65rem',
+                                            display:'flex', flexDirection:'column', alignItems:'center', gap:'0.3rem'
+                                        }}>
+                                            <span style={{fontSize:'1.8rem'}}>{typeInfo.icon}</span>
+                                            <span style={{
+                                                fontSize:'0.62rem', fontWeight:700, letterSpacing:'0.06em',
+                                                textTransform:'uppercase',
+                                                color: card.type==='hotel' ? '#1565c0' : card.type==='restaurant' ? '#e65100' : 'var(--primary)'
+                                            }}>{typeInfo.label}</span>
                                         </div>
-                                    )}
-                                    <div style={{display:'flex', gap:'0.3rem', marginLeft:'auto', flexShrink:0}}>
-                                        <button
-                                            onClick={() => toggleCollapse(dIdx)}
-                                            style={{background:'white', border:'1px solid var(--border)', borderRadius:'6px', cursor:'pointer', padding:'0.25rem 0.5rem', fontSize:'0.75rem', color:'var(--text-muted)', fontWeight:600}}
-                                        >{collapsed[dIdx] ? '▼ Visa' : '▲ Dölj'}</button>
-                                        {destinations.length > 1 && (
-                                            <button className="sight-del-btn" onClick={() => removeDest(dIdx)} title="Ta bort destination" style={{background:'white'}}>✕</button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {!collapsed[dIdx] && (
-                                    <div className="dest-body" style={{background:'white'}}>
-
-                                        {/* DATES */}
-                                        <div style={{padding:'1rem', borderBottom:'1px solid var(--bg)'}}>
-                                            <div style={{fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.6rem'}}>📅 Datum</div>
-                                            <div className="dates-row">
-                                                <div className="date-field">
-                                                    <span className="date-label">Ankomst</span>
-                                                    <input type="date" className="date-input" value={dest.dateFrom} onChange={e => updateDest(dIdx, 'dateFrom', e.target.value)} />
-                                                </div>
-                                                <div style={{alignSelf:'flex-end', paddingBottom:'0.6rem', color:'var(--text-muted)', fontSize:'1rem'}}>→</div>
-                                                <div className="date-field">
-                                                    <span className="date-label">Avresa</span>
-                                                    <input type="date" className="date-input" value={dest.dateTo} onChange={e => updateDest(dIdx, 'dateTo', e.target.value)} />
-                                                </div>
+                                        {/* Kortnamn + anteckning */}
+                                        <div style={{padding:'0.6rem 0.75rem', flex:1}}>
+                                            <div style={{fontWeight:700, fontSize:'0.85rem', lineHeight:1.3, color:'var(--text)', wordBreak:'break-word'}}>
+                                                {card.name}
                                             </div>
-                                        </div>
-
-                                        {/* MAP */}
-                                        <div style={{padding:'1rem', borderBottom:'1px solid var(--bg)'}}>
-                                            <div style={{fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.6rem'}}>🗺 Karta</div>
-                                            <div className="map-input-row">
-                                                <input
-                                                    placeholder={dest.name ? `t.ex. ${dest.name} centrum` : 'Sök plats på kartan...'}
-                                                    value={dest.mapQuery}
-                                                    onChange={e => updateDest(dIdx, 'mapQuery', e.target.value)}
-                                                />
-                                                {!dest.mapQuery && dest.name && (
-                                                    <button className="btn btn-secondary btn-small" style={{whiteSpace:'nowrap'}} onClick={() => updateDest(dIdx, 'mapQuery', dest.name)}>
-                                                        Använd destinationsnamn
-                                                    </button>
-                                                )}
-                                            </div>
-                                            {dest.mapQuery && (
-                                                <div className="map-iframe-wrap">
-                                                    <iframe src={mapEmbedUrl(dest.mapQuery)} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title={`Karta: ${dest.mapQuery}`} />
-                                                    <a className="map-open-btn" href={mapDirectUrl(dest.mapQuery)} target="_blank" rel="noreferrer">🗺 Öppna i Google Maps</a>
+                                            {card.note && (
+                                                <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'0.3rem', lineHeight:1.4,
+                                                    overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical'}}>
+                                                    {card.note}
                                                 </div>
                                             )}
+                                            {/* Google Maps-länk */}
+                                            {mapsUrl && (
+                                                <a href={mapsUrl} target="_blank" rel="noreferrer"
+                                                    style={{
+                                                        display:'inline-flex', alignItems:'center', gap:'0.25rem',
+                                                        marginTop:'0.45rem', fontSize:'0.72rem', fontWeight:700,
+                                                        color:'var(--primary)', textDecoration:'none',
+                                                        background:'rgba(26,107,138,0.08)', borderRadius:'5px',
+                                                        padding:'0.2rem 0.45rem'
+                                                    }}
+                                                    onClick={e => e.stopPropagation()}
+                                                >🗺 Google Maps</a>
+                                            )}
                                         </div>
-
-                                        {/* BOENDE */}
-                                        <div style={{padding:'1rem', borderBottom:'1px solid var(--bg)'}}>
-                                            <div style={{fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.6rem'}}>🏨 Boende</div>
-                                            <textarea
-                                                className="sight-note-input"
-                                                style={{minHeight:'60px', fontSize:'0.88rem'}}
-                                                placeholder={'Hotell, Airbnb, adress, bokningsnummer...\nt.ex. Hotel Marina, Bokn: ABC123, Check-in 15:00'}
-                                                value={dest.accommodation || ''}
-                                                onChange={e => updateDest(dIdx, 'accommodation', e.target.value)}
-                                            />
-                                        </div>
-
-                                        {/* RESTAURANGER */}
-                                        <div style={{padding:'1rem', borderBottom:'1px solid var(--bg)'}}>
-                                            <div style={{fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.6rem'}}>🍽️ Restauranger & Mat</div>
-                                            <textarea
-                                                className="sight-note-input"
-                                                style={{minHeight:'60px', fontSize:'0.88rem'}}
-                                                placeholder={'Tips på restauranger, lokala specialiteter...\nt.ex. Taverna Kostas (fisk), Marknadsgatan - testa skaldjur'}
-                                                value={dest.restaurants || ''}
-                                                onChange={e => updateDest(dIdx, 'restaurants', e.target.value)}
-                                            />
-                                        </div>
-
-                                        {/* ── LEVEL 3: BESÖKSMÅL ── */}
-                                        <div style={{padding:'1rem'}}>
-                                            <div style={{fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.75rem'}}>
-                                                📍 Besöksmål {dest.sights.length > 0 && <span style={{background:'var(--primary)', color:'white', borderRadius:'20px', padding:'0.05rem 0.5rem', fontWeight:700, marginLeft:'0.3rem'}}>{dest.sights.length}</span>}
-                                            </div>
-                                            <div className="sights-list">
-                                                {dest.sights.map((sight, sIdx) => {
-                                                    const sightKey = `${dIdx}-${sIdx}`;
-                                                    const sightCollapsed = collapsedSights[sightKey] !== false; // default collapsed
-                                                    const hasContent = sight.link || sight.mapQuery || sight.note;
-                                                    return (
-                                                    <div key={sight.id} style={{
-                                                        background:'var(--bg)', border:'1.5px solid var(--border)',
-                                                        borderRadius:'8px', overflow:'hidden', marginBottom:'0.5rem'
-                                                    }}>
-                                                        {/* Sight title row — always visible */}
-                                                        <div style={{display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.55rem 0.75rem', background:'white', borderBottom: sightCollapsed ? 'none' : '1px solid var(--border)'}}>
-                                                            <span style={{
-                                                                width:'22px', height:'22px', borderRadius:'50%',
-                                                                background:'var(--primary-light)', color:'var(--primary)',
-                                                                display:'flex', alignItems:'center', justifyContent:'center',
-                                                                fontSize:'0.7rem', fontWeight:700, flexShrink:0
-                                                            }}>{sIdx + 1}</span>
-                                                            <input
-                                                                className="sight-name-input"
-                                                                placeholder="Namn på besöksmål..."
-                                                                value={sight.name}
-                                                                onChange={e => updateSight(dIdx, sIdx, 'name', e.target.value)}
-                                                                onClick={e => e.stopPropagation()}
-                                                            />
-                                                            {/* Indicators */}
-                                                            {sightCollapsed && hasContent && (
-                                                                <div style={{display:'flex', gap:'0.2rem', flexShrink:0}}>
-                                                                    {sight.link && <span style={{fontSize:'0.7rem', opacity:0.5}} title="Har länk">🔗</span>}
-                                                                    {sight.mapQuery && <span style={{fontSize:'0.7rem', opacity:0.5}} title="Har karta">🗺</span>}
-                                                                    {sight.note && <span style={{fontSize:'0.7rem', opacity:0.5}} title="Har anteckning">📝</span>}
-                                                                </div>
-                                                            )}
-                                                            <button
-                                                                onClick={() => toggleSight(dIdx, sIdx)}
-                                                                style={{background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:'0.75rem', padding:'0.2rem 0.4rem', borderRadius:'4px', flexShrink:0, fontWeight:600, lineHeight:1}}
-                                                                title={sightCollapsed ? 'Expandera' : 'Fäll ihop'}
-                                                            >{sightCollapsed ? '▼' : '▲'}</button>
-                                                            <button className="sight-del-btn" onClick={() => removeSight(dIdx, sIdx)} title="Ta bort">✕</button>
-                                                        </div>
-                                                        {/* Sight details — collapsed when sightCollapsed */}
-                                                        {!sightCollapsed && (
-                                                            <>
-                                                            <div style={{padding:'0.6rem 0.75rem', display:'flex', flexDirection:'column', gap:'0.5rem'}}>
-                                                                <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
-                                                                    <span style={{fontSize:'0.78rem', color:'var(--text-muted)', width:'16px', flexShrink:0}}>🔗</span>
-                                                                    <input className="sight-link-input" placeholder="Länk (TripAdvisor, hemsida...)" value={sight.link} onChange={e => updateSight(dIdx, sIdx, 'link', e.target.value)} />
-                                                                    {sight.link && <a className="sight-open-btn" href={sight.link.startsWith('http') ? sight.link : 'https://'+sight.link} target="_blank" rel="noreferrer" title="Öppna länk">↗</a>}
-                                                                </div>
-                                                                <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
-                                                                    <span style={{fontSize:'0.78rem', color:'var(--text-muted)', width:'16px', flexShrink:0}}>🗺</span>
-                                                                    <input className="sight-link-input" placeholder="Kartsökning (t.ex. Eiffeltornet, Paris)" value={sight.mapQuery || ''} onChange={e => updateSight(dIdx, sIdx, 'mapQuery', e.target.value)} />
-                                                                    {!sight.mapQuery && sight.name && (
-                                                                        <button style={{fontSize:'0.7rem', fontWeight:600, color:'var(--primary)', border:'1px solid var(--primary-light)', borderRadius:'4px', padding:'0.15rem 0.4rem', background:'none', cursor:'pointer', whiteSpace:'nowrap'}} onClick={() => updateSight(dIdx, sIdx, 'mapQuery', sight.name)}>Använd namn</button>
-                                                                    )}
-                                                                </div>
-                                                                <div style={{display:'flex', gap:'0.5rem', alignItems:'flex-start'}}>
-                                                                    <span style={{fontSize:'0.78rem', color:'var(--text-muted)', width:'16px', flexShrink:0, marginTop:'0.3rem'}}>📝</span>
-                                                                    <textarea className="sight-note-input" style={{flex:1}} placeholder="Anteckning (öppettider, tips, bokningsnummer...)" value={sight.note} onChange={e => updateSight(dIdx, sIdx, 'note', e.target.value)} />
-                                                                </div>
-                                                            </div>
-                                                            {sight.mapQuery && (
-                                                                <div className="map-iframe-wrap" style={{margin:'0 0.75rem 0.75rem'}}>
-                                                                    <iframe src={mapEmbedUrl(sight.mapQuery)} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title={`Karta: ${sight.mapQuery}`} />
-                                                                    <a className="map-open-btn" href={mapDirectUrl(sight.mapQuery)} target="_blank" rel="noreferrer">🗺 Öppna i Google Maps</a>
-                                                                </div>
-                                                            )}
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                    );
-                                                })}
-                                                <button className="add-link" onClick={() => addSightExpanded(dIdx)} style={{fontSize:'0.85rem'}}>+ Lägg till besöksmål</button>
-                                            </div>
+                                        {/* Knappar */}
+                                        <div style={{display:'flex', borderTop:'1px solid var(--border)', background:'rgba(255,255,255,0.5)'}}>
+                                            <button onClick={() => openEditCard(activeDest, sIdx)} style={{
+                                                flex:1, padding:'0.45rem', background:'none', border:'none',
+                                                borderRight:'1px solid var(--border)', cursor:'pointer',
+                                                color:'var(--primary)', fontSize:'0.8rem', fontWeight:600,
+                                                fontFamily:'DM Sans, sans-serif', transition:'background 0.15s'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background='rgba(26,107,138,0.06)'}
+                                            onMouseLeave={e => e.currentTarget.style.background='none'}
+                                            >✏️ Redigera</button>
+                                            <button onClick={() => removeCard(activeDest, sIdx)} style={{
+                                                flex:1, padding:'0.45rem', background:'none', border:'none',
+                                                cursor:'pointer', color:'var(--danger)', fontSize:'0.8rem', fontWeight:600,
+                                                fontFamily:'DM Sans, sans-serif', transition:'background 0.15s'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background='rgba(192,57,43,0.06)'}
+                                            onMouseLeave={e => e.currentTarget.style.background='none'}
+                                            >🗑 Radera</button>
                                         </div>
                                     </div>
-                                )}
+                                );
+                            })}
+
+                            {/* Lägg till-kort — alltid sist */}
+                            <div onClick={openAddCard} style={{
+                                minHeight:'160px',
+                                border:'2px dashed rgba(26,107,138,0.3)',
+                                borderRadius:'12px',
+                                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                                gap:'0.5rem', cursor:'pointer',
+                                background:'rgba(255,255,255,0.4)',
+                                color:'var(--text-muted)', transition:'all 0.2s'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor='var(--primary)'; e.currentTarget.style.background='rgba(26,107,138,0.05)'; e.currentTarget.style.color='var(--primary)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(26,107,138,0.3)'; e.currentTarget.style.background='rgba(255,255,255,0.4)'; e.currentTarget.style.color='var(--text-muted)'; }}
+                            >
+                                <span style={{fontSize:'1.8rem', opacity:0.5}}>+</span>
+                                <span style={{fontSize:'0.82rem', fontWeight:600}}>Lägg till</span>
                             </div>
-                        ))}
+                        </div>
                     </div>
 
-                    {/* Bottom danger zone */}
-                    <div style={{borderTop:'1px solid var(--border)', paddingTop:'1rem', display:'flex', justifyContent:'flex-start'}}>
-                        <button className="btn btn-danger btn-small" style={{fontSize:'0.8rem', opacity:0.7}} onClick={() => setConfirm(true)}>🗑 Ta bort resa</button>
+                    {/* ── STARTA RESA ── */}
+                    <div style={{display:'flex', justifyContent:'flex-end'}}>
+                        <button className="btn btn-primary btn-small" onClick={() => { handleSave(); onActivate(trip.id); onClose(); }}>
+                            ▶ Starta resa
+                        </button>
                     </div>
                 </div>
 
                 {/* SAVE BAR */}
                 <div className="panel-save-bar">
                     <button className="btn btn-secondary" onClick={onClose}>Stäng</button>
-                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                        {saving ? 'Sparar...' : '💾 Spara ändringar'}
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}
+                        style={saving === 'done' ? {background:'#1a8a6b'} : {}}>
+                        {saving === true ? 'Sparar...' : saving === 'done' ? '✓ Sparat!' : '💾 Spara ändringar'}
                     </button>
                 </div>
             </div>
@@ -2421,6 +2478,7 @@ function TripPlannerPanel({ trip, onSave, onClose, onActivate, onDelete }) {
 }
 
 // ── PLANERADE RESOR ───────────────────────────────────────
+
 function PlannedTripsView({ trips, onAddTrip, onDeleteTrip, onActivateTrip, onUpdateTrip, autoEditTrip, onClearAutoEdit, triggerNewModal, onClearTrigger }) {
     const [editingTrip, setEditingTrip] = useState(null);
     const [confirm, setConfirm] = useState(null);
@@ -2938,8 +2996,8 @@ function Header({ user, onLogout, onAdminClick }) {
 function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses, users, currentUser, categories, onAddCategory, onDeleteCategory, onAddTrip, onDeleteTrip, onCompleteTrip, onUnplanTrip, onAddExpense, onDeleteExpense, onUpdateExpense, onNewPlannedTrip, onUpdateTrip }) {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
-    const [currency, setCurrency] = useState('SEK');
-    const [category, setCategory] = useState('food');
+    const [currency, setCurrency] = useState(() => { try { return localStorage.getItem('vr_last_currency') || 'SEK'; } catch { return 'SEK'; } });
+    const [category, setCategory] = useState(() => { try { return localStorage.getItem('vr_last_category') || 'food'; } catch { return 'food'; } });
     const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
     const [note, setNote] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -2948,6 +3006,7 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
     const [expenseView, setExpenseView] = useState('list');
     const [editingExpense, setEditingExpense] = useState(null); // expense being edited
     const [exportData, setExportData] = useState(null);
+    const [saveToast, setSaveToast] = useState('');
 
     const { getCurrencies, ratesUpdated } = useLiveRates();
     const CURRENCIES = getCurrencies();
@@ -2958,9 +3017,12 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
         setSubmitting(true);
         const sel = CURRENCIES.find(c => c.code === currency);
         await onAddExpense({ description, amount: parseFloat(amount), currency, exchange_rate: sel.rate, category, date: new Date(expenseDate).toISOString(), note: note.trim() });
-        setDescription(''); setAmount(''); setCategory('food'); setNote('');
-        setExpenseDate(new Date().toISOString().split('T')[0]);
+        try { localStorage.setItem('vr_last_currency', currency); localStorage.setItem('vr_last_category', category); } catch {}
+        setDescription(''); setAmount(''); setNote('');
+        // Keep category, currency and date — user likely adding more of same type/day
         setSubmitting(false);
+        setSaveToast('✓ Utgift sparad');
+        setTimeout(() => setSaveToast(''), 2200);
     };
 
     const handleSaveEdit = async () => {
@@ -3113,6 +3175,23 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                 onNewPlannedTrip={onNewPlannedTrip}
                 onUpdateTrip={onUpdateTrip}
             />
+            {/* ANTECKNINGAR BANNER — visas när vald resa har anteckningar */}
+            {selectedTripObj?.notes && selectedTripObj.notes.trim() && (
+                <div style={{
+                    background:'linear-gradient(135deg, rgba(245,158,42,0.12), rgba(245,158,42,0.06))',
+                    border:'1.5px solid rgba(245,158,42,0.35)',
+                    borderRadius:'12px', padding:'0.9rem 1.1rem',
+                    marginBottom:'1.25rem', display:'flex', gap:'0.75rem', alignItems:'flex-start'
+                }}>
+                    <span style={{fontSize:'1.3rem', flexShrink:0}}>📋</span>
+                    <div style={{flex:1, minWidth:0}}>
+                        <div style={{fontSize:'0.72rem', fontWeight:700, color:'#9a6100', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'0.3rem'}}>Viktiga anteckningar</div>
+                        <div style={{fontSize:'0.88rem', color:'var(--text)', lineHeight:1.6, whiteSpace:'pre-wrap', wordBreak:'break-word'}}>
+                            {selectedTripObj.notes.trim()}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {!selectedTrip ? (
                 <div className="card" style={{textAlign:'center', padding:'3rem'}}>
@@ -3158,15 +3237,28 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                                     {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
                                 </select>
                             </div>
-                            <div className="form-group" style={{marginBottom:0}}>
+                            <div className="form-group" style={{marginBottom:0, position:'relative'}}>
                                 <input type="date" className="form-input" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} disabled={submitting} required />
+                                {expenseDate !== new Date().toISOString().split('T')[0] ? null : (
+                                    <button type="button" onClick={() => { const d = new Date(); d.setDate(d.getDate()-1); setExpenseDate(d.toISOString().split('T')[0]); }}
+                                        style={{position:'absolute', right:'0.4rem', top:'50%', transform:'translateY(-50%)', fontSize:'0.68rem', background:'rgba(26,107,138,0.12)', border:'none', borderRadius:'4px', padding:'0.15rem 0.4rem', cursor:'pointer', color:'var(--primary)', fontWeight:700, whiteSpace:'nowrap'}}>
+                                        igår
+                                    </button>
+                                )}
                             </div>
                             <div className="form-group" style={{marginBottom:0, gridColumn:'1/-1'}}>
                                 <input type="text" className="form-input" placeholder="Anteckning (valfritt)..." value={note} onChange={e => setNote(e.target.value)} disabled={submitting} />
                             </div>
-                            <button type="submit" className="btn btn-secondary" style={{gridColumn:'1/-1'}} disabled={submitting || !selectedTrip}>
-                                {submitting ? '...' : 'Lägg till'}
-                            </button>
+                            <div style={{gridColumn:'1/-1', display:'flex', gap:'0.75rem', alignItems:'center'}}>
+                                <button type="submit" className="btn btn-secondary" style={{flex:1, justifyContent:'center'}} disabled={submitting || !selectedTrip}>
+                                    {submitting ? '...' : 'Lägg till'}
+                                </button>
+                                {saveToast && (
+                                    <div style={{fontSize:'0.85rem', color:'#1a8a6b', fontWeight:700, display:'flex', alignItems:'center', gap:'0.3rem', animation:'fadeIn 0.2s ease'}}>
+                                        {saveToast}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         {ratesUpdated && (
                             <div style={{fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'0.5rem'}}>
@@ -3175,32 +3267,92 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
                         )}
                     </form>
 
-                    {/* STATISTIK */}
-                    <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))'}}>
+                    {/* BUDGET BAR — direkt under Lägg till utgift */}
+                    {selectedTripObj?.budget && selectedTripObj.budget > 0 && (() => {
+                        const budget = selectedTripObj.budget;
+                        const pct = Math.min(100, (totalSEK / budget) * 100);
+                        const remaining = budget - totalSEK;
+                        const isOver = totalSEK > budget;
+                        const color = pct > 90 ? 'var(--error)' : pct > 70 ? 'var(--warning)' : 'var(--success)';
+                        return (
+                            <div style={{
+                                background: isOver
+                                    ? 'linear-gradient(135deg, rgba(192,57,43,0.08), rgba(192,57,43,0.04))'
+                                    : 'linear-gradient(135deg, rgba(26,107,138,0.07), rgba(26,107,138,0.03))',
+                                border: `1.5px solid ${isOver ? 'rgba(192,57,43,0.25)' : 'rgba(26,107,138,0.15)'}`,
+                                borderRadius:'14px', padding:'1.1rem 1.25rem', marginBottom:'1.5rem'
+                            }}>
+                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'0.65rem'}}>
+                                    <div>
+                                        <div style={{fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--text-muted)', marginBottom:'0.2rem'}}>Budget</div>
+                                        <div style={{display:'flex', alignItems:'baseline', gap:'0.4rem'}}>
+                                            <span style={{fontFamily:'Space Mono, monospace', fontSize:'1.6rem', fontWeight:700, color: isOver ? 'var(--error)' : 'var(--primary)', lineHeight:1}}>
+                                                {totalSEK.toFixed(0)}
+                                            </span>
+                                            <span style={{fontSize:'0.85rem', color:'var(--text-muted)'}}>/ {budget.toFixed(0)} kr</span>
+                                        </div>
+                                    </div>
+                                    <div style={{textAlign:'right'}}>
+                                        <div style={{fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--text-muted)', marginBottom:'0.2rem'}}>
+                                            {isOver ? 'Över budget' : 'Kvar'}
+                                        </div>
+                                        <div style={{fontFamily:'Space Mono, monospace', fontSize:'1.2rem', fontWeight:700, color: isOver ? 'var(--error)' : remaining < budget * 0.2 ? 'var(--warning)' : 'var(--success)'}}>
+                                            {isOver ? `-${Math.abs(remaining).toFixed(0)}` : remaining.toFixed(0)} kr
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Progress bar */}
+                                <div style={{height:'10px', background:'rgba(0,0,0,0.08)', borderRadius:'99px', overflow:'hidden'}}>
+                                    <div style={{
+                                        height:'100%', borderRadius:'99px',
+                                        width:`${pct}%`,
+                                        background: color,
+                                        transition:'width 0.5s ease',
+                                        boxShadow: `0 0 8px ${color}55`
+                                    }} />
+                                </div>
+                                <div style={{display:'flex', justifyContent:'space-between', marginTop:'0.35rem', fontSize:'0.7rem', color:'var(--text-muted)'}}>
+                                    <span>{pct.toFixed(0)}% spenderat</span>
+                                    <span>{expenses.length} utgifter</span>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* STATISTIK — kompakt rad */}
+                    {(() => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const todayTotal = expenses.filter(e => e.date && e.date.startsWith(todayStr)).reduce((s,e) => s + e.amount * e.exchange_rate, 0);
+                        return (
+                    <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', marginBottom:'1.5rem'}}>
+                        {!selectedTripObj?.budget && (
+                            <div className="card stat-card">
+                                <div className="stat-value">{totalSEK.toFixed(0)} kr</div>
+                                <div className="stat-label">Total</div>
+                            </div>
+                        )}
                         <div className="card stat-card">
-                            <div className="stat-value">{totalSEK.toFixed(0)} kr</div>
-                            <div className="stat-label">Total</div>
-                        </div>
-                        <div className="card stat-card">
-                            <div className="stat-value">{expenses.length}</div>
-                            <div className="stat-label">Utgifter</div>
+                            <div className="stat-value" style={{color: todayTotal > 0 ? 'var(--primary)' : 'var(--text-muted)', fontSize: todayTotal > 999 ? '1.8rem' : '2.4rem'}}>
+                                {todayTotal > 0 ? `${todayTotal.toFixed(0)} kr` : '–'}
+                            </div>
+                            <div className="stat-label">Idag</div>
                         </div>
                         {daysRemaining !== null && (
                             <div className="card stat-card">
                                 <div className="stat-value" style={{color: daysRemaining < 0 ? 'var(--danger)' : daysRemaining <= 2 ? '#f57f17' : 'var(--primary)'}}>
                                     {daysRemaining < 0 ? 0 : daysRemaining}
                                 </div>
-                                <div className="stat-label">
-                                    {daysRemaining < 0 ? 'Resan avslutad' : 'Dagar kvar'}
-                                </div>
+                                <div className="stat-label">{daysRemaining < 0 ? 'Avslutad' : 'Dagar kvar'}</div>
                                 {daysRemaining >= 0 && totalDays > 0 && expenses.length > 0 && (
-                                    <div style={{fontSize:'0.8rem', color:'var(--text-muted)', marginTop:'0.3rem'}}>
-                                        {(totalSEK / Math.max(1, totalDays - daysRemaining)).toFixed(0)} kr/dag hittills
+                                    <div style={{fontSize:'0.75rem', color:'var(--text-muted)', marginTop:'0.2rem'}}>
+                                        {(totalSEK / Math.max(1, totalDays - daysRemaining)).toFixed(0)} kr/dag
                                     </div>
                                 )}
                             </div>
                         )}
                     </div>
+                        );
+                    })()}
 
                     {/* PER KATEGORI */}
                     {categoryTotals.length > 0 && (
@@ -3286,6 +3438,7 @@ function ExpensesView({ trips, selectedTrip, onSelectTrip, expenses, allExpenses
 }
 
 // ── ADMIN ─────────────────────────────────────────────────
+
 function AdminView({ users, onAddUser, onDeleteUser, onResetPassword, onToggleAdmin }) {
     const [showAddUser, setShowAddUser] = useState(false);
     const [newUser, setNewUser] = useState({ username:'', password:'', name:'', is_admin:false });
